@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+
+# Data and exports
+data/
+exports/
+
+*.db
+# Exclude .sql files everywhere except build folder
+*.sql
+!build/
+!build/*.sql
+!build/**/*.sql
+
+# Logs
+*.log
+npm-debug.log*
+/var/log/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Build artifacts
+dist/
+build/
+
+# Memory files
+# Ignore all files and folders starting with a dot
+.*
+
+# But keep these important ones
+!.gitignore
+!.gitattributes
+!.github/
+!.github/**
+!.nvmrc
+!.node-version
+#- ESLint configuration
+!.eslintrc.*
+# - Prettier configuration
+!.prettierrc 
+#dont ignore dockerIgnore
+!.dockerignore
