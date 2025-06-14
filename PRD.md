@@ -69,10 +69,11 @@ Create an intelligent, persistent memory and reasoning system that can:
 ### Technology Stack
 
 - **Runtime**: Node.js 20 (LTS)
-- **Language**: TypeScript
-- **Framework**: Express.js + MCP SDK
+- **Language**: JavaScript ES modules
+- **Framework**: Express.js + MCP SDK 1.12.3
+- **Transport**: Streamable HTTP (latest MCP standard)
 - **Database**: PostgreSQL 15 + pgvector extension
-- **LLM**: Ollama with deepseek-coder:6.7b-instruct
+- **LLM**: Ollama with nomic-embed-text (embedding model)
 - **Container**: Docker with Debian 12-slim (security-focused)
 - **User Context**: Non-root operation (UID/GID 1000:1000)
 
@@ -293,37 +294,45 @@ interface LLMService {
 
 ## Development Phases
 
-### Phase 1: Foundation (Current)
+### Phase 1: Foundation (✅ Complete)
 - ✅ Docker containerization with PostgreSQL + pgvector
-- ✅ Ollama integration with deepseek-coder model
-- ✅ Basic HTTP server with health endpoints
+- ✅ Ollama integration with nomic-embed-text model
+- ✅ Streamable HTTP transport (MCP SDK 1.12.3)
 - ✅ Security hardening with Debian 12 + non-root user
 
-### Phase 2: Core API (In Progress)
-- 🔄 Database schema implementation
-- 🔄 Project and session management APIs
-- 🔄 Basic memory storage and retrieval
-- 🔄 PostgreSQL connection and data access layer
+### Phase 2: Core API (✅ Complete)
+- ✅ Database schema implementation
+- ✅ Project and session management APIs
+- ✅ Basic memory storage and retrieval
+- ✅ PostgreSQL connection and data access layer
 
-### Phase 3: Memory System
-- ⏳ Vector embedding generation
-- ⏳ Memory storage with pgvector integration
-- ⏳ Vector similarity search implementation
-- ⏳ Memory categorization and tagging
+### Phase 3: Memory System (✅ Complete)
+- ✅ Vector embedding generation
+- ✅ Memory storage with pgvector integration
+- ✅ Vector similarity search implementation
+- ✅ Memory categorization and tagging
 
-### Phase 4: Sequential Thinking
-- ⏳ Thinking sequence management
-- ⏳ Thought processing with branching
-- ⏳ Revision and history tracking
-- ⏳ Visual formatting and display
+### Phase 4: Sequential Thinking (✅ Complete)
+- ✅ Thinking sequence management
+- ✅ Thought processing with branching
+- ✅ Revision and history tracking
+- ✅ Visual formatting and display
 
-### Phase 5: Integration & Polish
-- ⏳ LLM service integration
-- ⏳ Comprehensive error handling
-- ⏳ Performance optimization
-- ⏳ Documentation and testing
+### Phase 5: Integration & Polish (✅ Complete)
+- ✅ MCP tools service integration
+- ✅ Comprehensive error handling
+- ✅ Performance optimization
+- ✅ Documentation and testing
 
-### Phase 6: Advanced Features
+### Phase 6: Production Ready (✅ Complete)
+- ✅ Streamable HTTP transport upgrade
+- ✅ Session management and resumability
+- ✅ Migration guide for SSE users
+- ✅ Comprehensive API documentation
+- ✅ Health monitoring and status endpoints
+
+### Phase 7: Advanced Features (🔄 Current)
+- ⏳ Web UI implementation (React/Vue frontend)
 - ⏳ Advanced search and filtering
 - ⏳ Bulk operations and import/export
 - ⏳ Analytics and insights

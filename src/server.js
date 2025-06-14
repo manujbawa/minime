@@ -493,8 +493,13 @@ app.get('/api/analytics', async (req, res) => {
 app.get('/mcp/status', (req, res) => {
   const tools = mcpToolsService.getPublicTools();
   res.json({
-    message: 'MCP server ready',
+    message: 'MCP server ready with Streamable HTTP transport',
     version: '0.1.0',
+    transport: {
+      type: 'Streamable HTTP',
+      endpoint: '/mcp',
+      features: ['session_management', 'resumability', 'unified_get_post']
+    },
     capabilities: {
       tools: {
         count: tools.length,
@@ -510,18 +515,50 @@ app.get('/mcp/status', (req, res) => {
   });
 });
 
-// MCP over HTTP using SSE transport
-app.get('/mcp/sse', (req, res) => {
-  logger.info('New MCP SSE connection established');
-  const transport = new SSEServerTransport('/mcp/messages', res);
-  mcpServer.connect(transport);
+// Create Streamable HTTP transport
+const streamableTransport = new StreamableHTTPServerTransport({
+  sessionIdGenerator: () => randomUUID(),
+  onsessioninitialized: (sessionId) => {
+    logger.info(`New MCP session initialized: ${sessionId}`);
+  }
 });
 
-app.post('/mcp/messages', express.json(), async (req, res) => {
-  // This endpoint receives MCP messages via HTTP POST
-  // The SSE transport handles the routing
-  logger.debug('Received MCP message via HTTP POST');
-  res.json({ status: 'received' });
+// Connect MCP server to Streamable HTTP transport
+mcpServer.connect(streamableTransport);
+
+// MCP over Streamable HTTP - unified endpoint for both GET and POST
+app.all('/mcp', express.raw({ type: 'application/json' }), async (req, res) => {
+  try {
+    logger.debug(`MCP ${req.method} request received`);
+    
+    // Parse JSON body for POST requests
+    let parsedBody;
+    if (req.method === 'POST' && req.body) {
+      try {
+        parsedBody = JSON.parse(req.body.toString());
+      } catch (error) {
+        logger.error('Failed to parse MCP request body:', error);
+        return res.status(400).json({ error: 'Invalid JSON' });
+      }
+    }
+    
+    await streamableTransport.handleRequest(req, res, parsedBody);
+  } catch (error) {
+    logger.error('MCP request handling failed:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+});
+
+// Legacy SSE endpoint for backward compatibility (deprecated)
+app.get('/mcp/sse', (req, res) => {
+  logger.warn('Legacy SSE endpoint accessed - please migrate to /mcp endpoint');
+  res.status(410).json({ 
+    error: 'SSE transport deprecated',
+    message: 'Please use the new Streamable HTTP transport at /mcp endpoint',
+    migration: 'https://docs.anthropic.com/en/docs/build-with-claude/mcp'
+  });
 });
 
 // Start HTTP server and initialize services
@@ -539,9 +576,9 @@ app.listen(port, '0.0.0.0', async () => {
     process.exit(1);
   }
   
-  // MCP Server is now available over HTTP at /mcp/sse and /mcp/messages
-  logger.info('MCP server initialized and available over HTTP');
-  logger.info(`MCP HTTP endpoints: /mcp/sse (SSE) and /mcp/messages (POST)`);
+  // MCP Server is now available over Streamable HTTP
+  logger.info('MCP server initialized with Streamable HTTP transport');
+  logger.info(`MCP Streamable HTTP endpoint: /mcp (supports both GET and POST)`);
   logger.info(`Available MCP tools: ${mcpToolsService.getPublicTools().length}`);
   logger.info(`Web UI available at: http://localhost:${port}`);
   

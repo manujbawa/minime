@@ -1,6 +1,10 @@
 /**
  * MCP Tools Service for MiniMe-MCP
  * Manages outward-facing tools for MCP client discovery and execution
+ * Compatible with Streamable HTTP transport (MCP SDK 1.12.3+)
+ * 
+ * Transport: Streamable HTTP at /mcp endpoint
+ * Features: Session management, resumability, unified GET/POST
  */
 
 export class MCPToolsService {

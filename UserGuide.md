@@ -130,6 +130,70 @@ Claude: [Analyzes coding patterns and shows evolution of error handling approach
 
 ---
 
+## 🔧 MCP Connection Examples
+
+### **Quick Connection Test**
+```bash
+# Test MCP server availability
+curl -X POST http://localhost:8000/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{}}},"id":1}'
+```
+
+### **MCP Client Configuration Examples**
+
+#### **Claude Desktop (Recommended)**
+```json
+{
+  "mcpServers": {
+    "minime": {
+      "transport": {
+        "type": "streamableHttp",
+        "url": "http://localhost:8000/mcp"
+      }
+    }
+  }
+}
+```
+
+#### **Cursor IDE**
+```json
+{
+  "mcpServers": {
+    "minime": {
+      "transport": {
+        "type": "streamableHttp", 
+        "url": "http://localhost:8000/mcp"
+      }
+    }
+  }
+}
+```
+
+#### **VS Code (Future)**
+```json
+{
+  "mcp.servers": {
+    "minime": {
+      "transport": {
+        "type": "streamableHttp",
+        "url": "http://localhost:8000/mcp"
+      }
+    }
+  }
+}
+```
+
+### **Tool Discovery**
+Once connected, MCP clients can automatically discover all 11 available tools:
+- Memory management (store, search)
+- Project operations (create, list, manage)
+- Sequential thinking (start, add thoughts, complete)
+- Learning insights (patterns, analytics)
+
+---
+
 ## 💬 Example Questions to Ask
 
 ### Memory & Context
@@ -162,15 +226,15 @@ Claude: [Analyzes coding patterns and shows evolution of error handling approach
 
 ### Cursor IDE Integration
 
-1. **Configure MCP Connection (HTTP - Recommended)**
+1. **Configure MCP Connection (Streamable HTTP - Recommended)**
    ```json
    // In Cursor settings (claude_desktop_config.json)
    {
      "mcpServers": {
        "minime": {
          "transport": {
-           "type": "sse",
-           "url": "http://localhost:8000/mcp/sse"
+           "type": "streamableHttp",
+           "url": "http://localhost:8000/mcp"
          }
        }
      }
@@ -205,15 +269,15 @@ Claude: [Analyzes coding patterns and shows evolution of error handling approach
 ### VS Code Integration
 
 1. **Install MCP Extension** (when available)
-2. **Configure Connection (HTTP - Recommended)**
+2. **Configure Connection (Streamable HTTP - Recommended)**
    ```json
    // In VS Code settings  
    {
      "mcp.servers": {
        "minime": {
          "transport": {
-           "type": "sse",
-           "url": "http://localhost:8000/mcp/sse"
+           "type": "streamableHttp",
+           "url": "http://localhost:8000/mcp"
          }
        }
      }
@@ -267,11 +331,15 @@ Claude: [Analyzes coding patterns and shows evolution of error handling approach
 
 **Key Point**: The IDE provides context, you initiate the structured thinking through conversation, and MCP stores the process for future reference.
 
-### **HTTP vs stdio MCP Benefits**
+### **Streamable HTTP vs stdio MCP Benefits**
 
-#### **HTTP-based MCP (Recommended)**
+#### **Streamable HTTP MCP (Recommended)**
+- ✅ **Latest Standard**: Uses the newest MCP transport specification
+- ✅ **Session Management**: Built-in session tracking and resumability
 - ✅ **Multiple Clients**: Several team members can connect simultaneously  
 - ✅ **Network Access**: Access from different machines on the network
+- ✅ **Unified Endpoint**: Single /mcp endpoint handles both GET and POST
+- ✅ **Better Performance**: Improved over SSE with stream management
 - ✅ **Easier Debugging**: Standard HTTP tools for monitoring and debugging
 - ✅ **No Docker Dependency**: IDEs don't need Docker exec access
 - ✅ **Load Balancing**: Can run multiple instances behind a load balancer
@@ -282,6 +350,68 @@ Claude: [Analyzes coding patterns and shows evolution of error handling approach
 - ⚠️ **Local Only**: Requires Docker exec access
 - ⚠️ **Complex Setup**: IDEs need Docker integration
 - ⚠️ **Debugging Difficult**: Less visibility into communication
+
+### **Migration Guide: SSE to Streamable HTTP**
+
+If you're upgrading from a previous version that used SSE transport, here's how to migrate:
+
+#### **Step 1: Update Your Configuration**
+```json
+// OLD Configuration (SSE - deprecated)
+{
+  "mcpServers": {
+    "minime": {
+      "transport": {
+        "type": "sse",
+        "url": "http://localhost:8000/mcp/sse"
+      }
+    }
+  }
+}
+
+// NEW Configuration (Streamable HTTP - recommended)
+{
+  "mcpServers": {
+    "minime": {
+      "transport": {
+        "type": "streamableHttp",
+        "url": "http://localhost:8000/mcp"
+      }
+    }
+  }
+}
+```
+
+#### **Step 2: Update Docker Container**
+```bash
+# Stop existing container
+./docker-run.sh stop
+
+# Rebuild with latest version
+./docker-run.sh build
+
+# Start with updated transport
+./docker-run.sh run
+```
+
+#### **Step 3: Verify Migration**
+```bash
+# Test new endpoint
+curl http://localhost:8000/mcp/status
+
+# Should show: "MCP server ready with Streamable HTTP transport"
+```
+
+#### **Step 4: Update IDE Settings**
+1. Replace old SSE configuration with new Streamable HTTP config
+2. Restart your IDE/Claude Desktop
+3. Verify MCP connection shows as active
+
+#### **Backward Compatibility**
+- Legacy `/mcp/sse` endpoint returns helpful migration message
+- All MCP tools remain exactly the same
+- No data migration required - all memories and sequences preserved
+- Session management is now automatic with UUID-based tracking
 
 ---
 
@@ -517,9 +647,22 @@ NODE_ENV=production
 - `GET /health` - System health check with service status
 - `GET /mcp/status` - MCP-specific status and tool count
 
-### MCP Protocol (HTTP)
-- `GET /mcp/sse` - MCP Server-Sent Events endpoint for real-time communication
-- `POST /mcp/messages` - MCP message posting endpoint
+### MCP Protocol (Streamable HTTP v1.12.3)
+- `GET /mcp` - Initialize new MCP session with automatic session ID generation
+- `POST /mcp` - Send JSON-RPC messages (tools, resources, prompts)
+- `DELETE /mcp` - Terminate active MCP session and cleanup
+- `GET /mcp?lastEventId=<id>` - Resume session from specific event (resumability)
+
+**Transport Features:**
+- ✅ **Session Management**: Automatic UUID-based session tracking
+- ✅ **Resumability**: Client can reconnect and replay missed events
+- ✅ **Unified Endpoint**: Single `/mcp` handles all MCP operations
+- ✅ **Error Handling**: Proper HTTP status codes and JSON-RPC error responses
+- ✅ **Content Negotiation**: Supports both JSON responses and SSE streams
+
+**Headers Required:**
+- `Content-Type: application/json` (for POST requests)
+- `Accept: application/json, text/event-stream` (for session initialization)
 
 ### Project Management
 - `GET /api/projects` - List all projects with statistics
