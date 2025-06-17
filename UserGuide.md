@@ -424,23 +424,36 @@ In addition to IDE integration, MiniMe-MCP includes a **comprehensive web interf
 # After starting the container
 ./docker-run.sh run
 
-# Open in browser
-http://localhost:8000
+# Open in browser - UI is now available!
+http://localhost:8000/ui
+
+# Root redirects to UI automatically
+http://localhost:8000  # → redirects to /ui
 ```
 
 ### **Web UI Features**
 
-#### **📊 Main Dashboard**
-- **Project Overview**: Visual cards showing memory counts, recent activity, health status
-- **Quick Actions**: Create projects, start thinking sequences, search memories
-- **System Health**: Real-time status of all services and embedding models
-- **Recent Activity**: Timeline of latest memories and thinking sequences
+#### **✅ Currently Available**
 
-#### **🔍 Memory Explorer**
-- **Semantic Search**: Find memories using natural language queries
-- **Advanced Filters**: Filter by project, type, date, importance, confidence
+**📊 Main Dashboard**
+- **Project Overview**: Visual cards showing memory counts, recent activity, health status
+- **System Health**: Real-time status of all services and embedding models  
+- **Interactive Charts**: Memory growth trends and type distribution
+- **Recent Activity**: Timeline of latest memories and thinking sequences
+- **Live Statistics**: Auto-refreshing metrics and performance data
+
+**🔍 Memory Explorer**
+- **Advanced Search**: Semantic search across all project memories
+- **Smart Filtering**: Filter by project, type, importance, date range
+- **Real-time Results**: Instant search with similarity scoring
+- **Rich Memory Display**: Formatted content with metadata and timestamps
+
+#### **🚧 Coming Soon**
+
+**🔍 Enhanced Memory Features**
 - **Similarity Browser**: Discover related memories using vector embeddings
 - **Timeline View**: Chronological exploration of your knowledge evolution
+- **Memory Clustering**: Automatic grouping of related content
 
 #### **💭 Thinking Sequence Visualizer**
 - **Interactive Flow Diagrams**: Visual representation of thought progression

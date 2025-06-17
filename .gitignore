@@ -32,6 +32,7 @@ npm-debug.log*
 # Build artifacts
 dist/
 build/
+local_build_scripts/
 
 # Memory files
 # Ignore all files and folders starting with a dot
@@ -50,3 +51,15 @@ build/
 !.prettierrc 
 #dont ignore dockerIgnore
 !.dockerignore
+
+# Memory bank documentation
+memory-bank/
+mcp-client/PUBLISH.md
+ui-design.md
+vulnerability-analysis-and-fixes.md
+PRD.md
+post-security-scan-results.md
+ORGANIZATION.md
+LOCAL_MODELS.md
+high-vulnerability-analysis.md
+DOCKER.md

@@ -92,27 +92,41 @@ export class EmbeddingService {
     async generateOllamaEmbedding(text, modelName) {
         const url = `${this.config.ollama.host}/api/embeddings`;
         
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                model: modelName,
-                prompt: text
-            }),
-            timeout: this.config.ollama.timeout
-        });
-
-        if (!response.ok) {
-            throw new Error(`Ollama API error: ${response.status} ${response.statusText}`);
-        }
-
-        const data = await response.json();
+        // Create AbortController for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), this.config.ollama.timeout);
         
-        if (!data.embedding) {
-            throw new Error('No embedding returned from Ollama');
-        }
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model: modelName,
+                    prompt: text
+                }),
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) {
+                throw new Error(`Ollama API error: ${response.status} ${response.statusText}`);
+            }
 
-        return data.embedding;
+            const data = await response.json();
+            
+            if (!data.embedding) {
+                throw new Error('No embedding returned from Ollama');
+            }
+
+            return data.embedding;
+        } catch (error) {
+            clearTimeout(timeoutId);
+            if (error.name === 'AbortError') {
+                throw new Error(`Ollama embedding request timed out after ${this.config.ollama.timeout}ms`);
+            }
+            throw error;
+        }
     }
 
     /**
@@ -125,30 +139,44 @@ export class EmbeddingService {
 
         const url = `${this.config.openai.baseUrl}/embeddings`;
         
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${this.config.openai.apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: modelName,
-                input: text
-            }),
-            timeout: this.config.openai.timeout
-        });
-
-        if (!response.ok) {
-            throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
-        }
-
-        const data = await response.json();
+        // Create AbortController for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), this.config.openai.timeout);
         
-        if (!data.data || !data.data[0] || !data.data[0].embedding) {
-            throw new Error('No embedding returned from OpenAI');
-        }
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.config.openai.apiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: modelName,
+                    input: text
+                }),
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) {
+                throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+            }
 
-        return data.data[0].embedding;
+            const data = await response.json();
+            
+            if (!data.data || !data.data[0] || !data.data[0].embedding) {
+                throw new Error('No embedding returned from OpenAI');
+            }
+
+            return data.data[0].embedding;
+        } catch (error) {
+            clearTimeout(timeoutId);
+            if (error.name === 'AbortError') {
+                throw new Error(`OpenAI embedding request timed out after ${this.config.openai.timeout}ms`);
+            }
+            throw error;
+        }
     }
 
     /**

@@ -875,6 +875,209 @@ export class DatabaseService {
             };
         }
     }
+
+    /**
+     * Data Administration - Delete project memories only
+     */
+    async deleteProjectMemories(projectId) {
+        try {
+            const result = await this.query(`
+                DELETE FROM memories 
+                WHERE project_id = $1
+            `, [projectId]);
+            
+            this.logger.info(`Deleted ${result.rowCount} memories from project ${projectId}`);
+            return result.rowCount;
+        } catch (error) {
+            this.logger.error('Failed to delete project memories:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Data Administration - Delete entire project and all associated data
+     */
+    async deleteProject(projectId) {
+        const client = await this.pool.connect();
+        
+        try {
+            await client.query('BEGIN');
+            
+            // Count what we're about to delete
+            const memoriesCount = await client.query(
+                'SELECT COUNT(*) FROM memories WHERE project_id = $1', 
+                [projectId]
+            );
+            const sessionsCount = await client.query(
+                'SELECT COUNT(*) FROM sessions WHERE project_id = $1', 
+                [projectId]
+            );
+            const sequencesResult = await client.query(`
+                SELECT COUNT(*) FROM thinking_sequences 
+                WHERE session_id IN (SELECT id FROM sessions WHERE project_id = $1)
+            `, [projectId]);
+            const thoughtsResult = await client.query(`
+                SELECT COUNT(*) FROM thoughts 
+                WHERE sequence_id IN (
+                    SELECT ts.id FROM thinking_sequences ts 
+                    JOIN sessions s ON ts.session_id = s.id 
+                    WHERE s.project_id = $1
+                )
+            `, [projectId]);
+
+            // Delete in correct order (respecting foreign keys)
+            // 1. Delete thoughts first
+            await client.query(`
+                DELETE FROM thoughts 
+                WHERE sequence_id IN (
+                    SELECT ts.id FROM thinking_sequences ts 
+                    JOIN sessions s ON ts.session_id = s.id 
+                    WHERE s.project_id = $1
+                )
+            `, [projectId]);
+
+            // 2. Delete thinking sequences
+            await client.query(`
+                DELETE FROM thinking_sequences 
+                WHERE session_id IN (SELECT id FROM sessions WHERE project_id = $1)
+            `, [projectId]);
+
+            // 3. Delete memories
+            await client.query(
+                'DELETE FROM memories WHERE project_id = $1', 
+                [projectId]
+            );
+
+            // 4. Delete sessions
+            await client.query(
+                'DELETE FROM sessions WHERE project_id = $1', 
+                [projectId]
+            );
+
+            // 5. Delete project
+            await client.query(
+                'DELETE FROM projects WHERE id = $1', 
+                [projectId]
+            );
+
+            await client.query('COMMIT');
+
+            const stats = {
+                projects: 1,
+                memories: parseInt(memoriesCount.rows[0].count),
+                sessions: parseInt(sessionsCount.rows[0].count),
+                sequences: parseInt(sequencesResult.rows[0].count),
+                thoughts: parseInt(thoughtsResult.rows[0].count)
+            };
+
+            this.logger.info(`Deleted project ${projectId} and all associated data:`, stats);
+            return stats;
+
+        } catch (error) {
+            await client.query('ROLLBACK');
+            this.logger.error('Failed to delete project:', error);
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+
+    /**
+     * Data Administration - Delete all meta-learning data
+     */
+    async deleteAllLearnings() {
+        const client = await this.pool.connect();
+        
+        try {
+            await client.query('BEGIN');
+            
+            // Count what we're about to delete
+            const patternsResult = await client.query('SELECT COUNT(*) FROM coding_patterns');
+            const insightsResult = await client.query('SELECT COUNT(*) FROM meta_insights');
+
+            // Delete all meta-learning data
+            await client.query('DELETE FROM coding_patterns');
+            await client.query('DELETE FROM meta_insights');
+
+            await client.query('COMMIT');
+
+            const stats = {
+                patterns: parseInt(patternsResult.rows[0].count),
+                insights: parseInt(insightsResult.rows[0].count)
+            };
+
+            this.logger.info('Deleted all meta-learning data:', stats);
+            return stats;
+
+        } catch (error) {
+            await client.query('ROLLBACK');
+            this.logger.error('Failed to delete learnings:', error);
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+
+    /**
+     * Data Administration - Delete ALL user data
+     */
+    async deleteAllData() {
+        const client = await this.pool.connect();
+        
+        try {
+            await client.query('BEGIN');
+            
+            // Count everything we're about to delete
+            const [
+                projectsResult,
+                memoriesResult,
+                sessionsResult,
+                sequencesResult,
+                thoughtsResult,
+                patternsResult,
+                insightsResult
+            ] = await Promise.all([
+                client.query('SELECT COUNT(*) FROM projects'),
+                client.query('SELECT COUNT(*) FROM memories'),
+                client.query('SELECT COUNT(*) FROM sessions'),
+                client.query('SELECT COUNT(*) FROM thinking_sequences'),
+                client.query('SELECT COUNT(*) FROM thoughts'),
+                client.query('SELECT COUNT(*) FROM coding_patterns'),
+                client.query('SELECT COUNT(*) FROM meta_insights')
+            ]);
+
+            // Delete ALL data in correct order
+            await client.query('DELETE FROM thoughts');
+            await client.query('DELETE FROM thinking_sequences');
+            await client.query('DELETE FROM memories');
+            await client.query('DELETE FROM sessions');
+            await client.query('DELETE FROM projects');
+            await client.query('DELETE FROM coding_patterns');
+            await client.query('DELETE FROM meta_insights');
+
+            await client.query('COMMIT');
+
+            const stats = {
+                projects: parseInt(projectsResult.rows[0].count),
+                memories: parseInt(memoriesResult.rows[0].count),
+                sessions: parseInt(sessionsResult.rows[0].count),
+                sequences: parseInt(sequencesResult.rows[0].count),
+                thoughts: parseInt(thoughtsResult.rows[0].count),
+                patterns: parseInt(patternsResult.rows[0].count),
+                insights: parseInt(insightsResult.rows[0].count)
+            };
+
+            this.logger.warn('DELETED ALL USER DATA:', stats);
+            return stats;
+
+        } catch (error) {
+            await client.query('ROLLBACK');
+            this.logger.error('Failed to delete all data:', error);
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
 }
 
 export default DatabaseService;

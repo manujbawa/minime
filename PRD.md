@@ -61,8 +61,8 @@ Create an intelligent, persistent memory and reasoning system that can:
                               │
                     ┌─────────────────┐
                     │     Ollama      │
-                    │   deepseek-     │
-                    │   coder:6.7b    │
+                    │  nomic-embed-   │
+                    │     text        │
                     └─────────────────┘
 ```
 
@@ -73,7 +73,7 @@ Create an intelligent, persistent memory and reasoning system that can:
 - **Framework**: Express.js + MCP SDK 1.12.3
 - **Transport**: Streamable HTTP (latest MCP standard)
 - **Database**: PostgreSQL 15 + pgvector extension
-- **LLM**: Ollama with nomic-embed-text (embedding model)
+- **Embeddings**: Ollama with nomic-embed-text (vector similarity search)
 - **Container**: Docker with Debian 12-slim (security-focused)
 - **User Context**: Non-root operation (UID/GID 1000:1000)
 
@@ -238,20 +238,20 @@ interface Thought {
 }
 ```
 
-### 5. LLM Integration
+### 5. Embedding Service
 
 **Requirements:**
-- Local Ollama integration with deepseek-coder model
-- Embedding generation for memory storage
-- Inference capabilities for reasoning enhancement
+- Local Ollama integration with embedding models (nomic-embed-text)
+- Vector embedding generation for memory storage
+- Similarity search capabilities
 - Model health monitoring
 - Graceful fallback when model unavailable
 
 **Internal APIs:**
 ```typescript
-interface LLMService {
+interface EmbeddingService {
   generateEmbedding(text: string): Promise<number[]>;
-  chat(messages: ChatMessage[]): Promise<string>;
+  cosineSimilarity(embeddingA: number[], embeddingB: number[]): number;
   isHealthy(): Promise<boolean>;
 }
 ```

@@ -40,15 +40,16 @@
 ┌─────────────────────────────────────────────┐
 │           Same Docker Container              │
 ├─────────────────────────────────────────────┤
-│  React UI (Port 8000)  │  REST API          │
+│  React UI (Port 8000)  │  API Endpoints     │
 │  - /                   │  - /api/*          │
 │  - /projects           │  - /health         │
 │  - /memories           │  - /mcp/status     │
-│  - /thinking          │                    │
+│  - /thinking          │  - /mcp (Streamable)│
 ├─────────────────────────────────────────────┤
 │         Express.js Server (Port 8000)       │
+│         + Streamable HTTP Transport         │
 ├─────────────────────────────────────────────┤
-│     Existing Services & Database            │
+│     MCP Tools + Database + Embeddings      │
 └─────────────────────────────────────────────┘
 ```
 
@@ -58,6 +59,8 @@
 - **Flow Diagrams**: React Flow for thinking sequences
 - **Styling**: Tailwind CSS for modern design
 - **API Client**: Axios for HTTP requests
+- **MCP Integration**: Direct Streamable HTTP calls to /mcp endpoint
+- **Transport**: Latest MCP SDK 1.12.3 with session management
 
 ### **Key UI Screens**
 

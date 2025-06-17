@@ -1,88 +1,137 @@
-# MiniMe-MCP Docker Volume Setup
+# MiniMe-MCP Docker Setup
 
-Similar to n8n, MiniMe-MCP uses Docker volumes for persistent data storage. All your memories, thinking sequences, and learned patterns are preserved across container restarts.
+⚠️ **IMPORTANT**: This system now uses a **single container architecture** with all services bundled together for simplicity.
 
-## Quick Start
+## 🚀 Quick Start
 
-### 1. Create and Run with Default Volume
+### Single Container Setup (Recommended)
 
 ```bash
-# Create volume and run (similar to n8n)
-docker volume create minime_data
-docker run -it --rm --name minime-mcp -p 8000:8000 -v minime_data:/data minime-mcp:latest
+# Build and start everything
+make all
+
+# Check status
+make status
+
+# Access the system
+curl http://localhost:8000/health
 ```
+
+For advanced Docker operations, see build/ directory.
 
 ### 2. Using the Convenience Script
 
 ```bash
-# Simple run with default settings
-./docker-run.sh run
+# Start all services
+./docker-run.sh up -d
 
-# Custom volume name
-./docker-run.sh run my_project_data
+# Custom port
+./docker-run.sh up --port 8080 -d
 
-# Background mode with custom port
-./docker-run.sh run --port 8080 -d
+# Build and start
+./docker-run.sh up --build -d
 
-# Build and run
-./docker-run.sh run --build
+# Check status
+./docker-run.sh status
 ```
 
-## Volume Contents
+### 3. Using Make (Easiest)
 
-The `/data` volume contains:
-
-```
-/data/
-├── postgres/          # PostgreSQL database files
-│   ├── memories       # Your stored memories
-│   ├── thinking_sequences  # Sequential reasoning data
-│   └── meta_learning  # Cross-project patterns
-├── ollama/           # Downloaded embedding models
-│   └── models/       # Embedding model files
-└── logs/             # Application logs
+```bash
+cd build
+make up      # Start all services
+make status  # Check status  
+make logs    # View logs
+make down    # Stop all services
 ```
 
-## Common Commands
+## 🏗️ Service Architecture
+
+**Critical: Services start in dependency order**
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   PostgreSQL    │ -> │     Ollama      │ -> │   MCP Server    │
+│   (Database)    │    │  (Embeddings)   │    │  (Node.js App)  │
+│ Port: 5432      │    │ Port: 11434     │    │ Port: 8000      │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+## 📊 Data Persistence
+
+Data is stored in **named Docker volumes**:
+
+```
+postgres-data/        # PostgreSQL database files
+├── memories          # Your stored memories
+├── thinking_sequences # Sequential reasoning data
+└── meta_learning     # Cross-project patterns
+
+ollama-data/          # Downloaded embedding models
+└── models/           # Embedding model files
+
+app-logs/             # Application logs
+```
+
+## 🔧 Service Management
+
+### Service Control
+```bash
+# Start all services
+docker-compose up -d
+
+# Stop all services
+docker-compose down
+
+# Restart specific service
+docker-compose restart minime-mcp
+
+# View service status
+docker-compose ps
+```
 
 ### Volume Management
 ```bash
 # List volumes
-docker volume ls
+docker volume ls | grep minime
 
-# Inspect volume
-docker volume inspect minime_data
+# Backup PostgreSQL data
+docker-compose exec postgres pg_dump -U minime minime_memories > backup.sql
 
-# Backup volume to tar file
-docker run --rm -v minime_data:/data -v $(pwd):/backup alpine tar czf /backup/minime-backup.tar.gz -C /data .
-
-# Restore volume from tar file
-docker run --rm -v minime_data:/data -v $(pwd):/backup alpine tar xzf /backup/minime-backup.tar.gz -C /data
+# Backup all volumes
+docker run --rm -v postgres-data:/postgres -v ollama-data:/ollama -v $(pwd):/backup alpine tar czf /backup/minime-backup.tar.gz postgres ollama
 ```
 
-### Container Management
+### Service Logs and Access
 ```bash
-# Check status
-./docker-run.sh status
+# View all logs
+docker-compose logs -f
 
-# View logs
-./docker-run.sh logs
+# Service-specific logs
+docker-compose logs -f minime-mcp
+docker-compose logs -f postgres
+docker-compose logs -f ollama
 
-# Stop container
-./docker-run.sh stop
-
-# Open shell in container
-./docker-run.sh shell
+# Shell access
+docker-compose exec minime-mcp /bin/sh
+docker-compose exec postgres psql -U minime -d minime_memories
 ```
 
-## Environment Variables
+## 🌍 Environment Configuration
+
+Create `build/.env` from template:
+
+```bash
+cp build/.env.template build/.env
+```
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `POSTGRES_PASSWORD` | auto-generated | Database password |
+| `POSTGRES_PASSWORD` | minime_secure_password | Database password |
 | `MCP_PORT` | 8000 | HTTP server port |
 | `LOG_LEVEL` | info | Logging level |
-| `OLLAMA_HOST` | auto-detected | Ollama service URL |
+| `WAIT_FOR_SERVICES` | true | Wait for dependencies |
+| `STARTUP_DELAY` | 10 | Additional startup delay (seconds) |
 
 ## Custom Configuration
 
@@ -103,16 +152,30 @@ docker run -it --rm --name minime-mcp \
   minime-mcp:latest
 ```
 
-## Health Checks
+## 🏥 Health Monitoring
 
-The container includes automatic health monitoring:
+**All services have health checks with proper dependencies:**
 
 ```bash
-# Check health via API
-curl http://localhost:8000/health
+# Check all service health
+make health
+# or
+docker-compose ps
 
-# Docker health status
-docker ps --format "table {{.Names}}\t{{.Status}}"
+# Individual health checks
+curl http://localhost:8000/health          # MCP Server
+curl http://localhost:11434/api/version    # Ollama
+docker-compose exec postgres pg_isready -U minime  # PostgreSQL
+```
+
+### Startup Sequence Monitoring
+
+```bash
+# Watch startup progress
+docker-compose logs -f
+
+# Check if all dependencies are ready
+docker-compose ps | grep healthy
 ```
 
 ## Data Persistence
@@ -128,67 +191,115 @@ docker ps --format "table {{.Names}}\t{{.Status}}"
 - Import on different machine
 - Share volumes between team members
 
-## Multiple Projects
+## 🚀 Multiple Instances
 
-You can run separate instances for different projects:
+Run separate instances for different projects:
 
 ```bash
-# Project A
-docker volume create project_a_data
-docker run -d --name minime-project-a -p 8000:8000 -v project_a_data:/data minime-mcp:latest
+# Project A (default port 8000)
+cp build/.env build/.env.project-a
+export COMPOSE_PROJECT_NAME=minime-project-a
+export MCP_PORT=8000
+docker-compose up -d
 
-# Project B  
-docker volume create project_b_data
-docker run -d --name minime-project-b -p 8001:8000 -v project_b_data:/data minime-mcp:latest
+# Project B (port 8001)
+cp build/.env build/.env.project-b
+sed -i 's/MCP_PORT=8000/MCP_PORT=8001/' build/.env.project-b
+export COMPOSE_PROJECT_NAME=minime-project-b
+export MCP_PORT=8001
+docker-compose --env-file build/.env.project-b up -d
 ```
 
-## Troubleshooting
+## 🛠️ Troubleshooting
 
-### Container Won't Start
+### Services Won't Start
 ```bash
-# Check logs
-docker logs minime-mcp
+# Check service dependencies
+docker-compose ps
+docker-compose logs postgres
+docker-compose logs ollama
 
-# Check volume permissions
-docker run --rm -v minime_data:/data alpine ls -la /data
+# Restart in dependency order
+docker-compose restart postgres
+docker-compose restart ollama  
+docker-compose restart minime-mcp
+```
+
+### Database Connection Issues  
+```bash
+# Test database connectivity
+docker-compose exec postgres pg_isready -U minime
+
+# Check database logs
+docker-compose logs postgres
+
+# Connect directly
+docker-compose exec postgres psql -U minime -d minime_memories
 ```
 
 ### Reset Everything
 ```bash
-# WARNING: This deletes all data!
-./docker-run.sh clean
+# WARNING: Deletes all data!
+make clean
+# or
+docker-compose down -v --remove-orphans
 ```
 
-### Database Issues
-```bash
-# Connect to container and check database
-docker exec -it minime-mcp psql -U minime minime_memories
-```
+## 🌐 API Access
 
-## API Access
-
-Once running, access these endpoints:
+Once all services are healthy, access these endpoints:
 
 - **Health Check**: `http://localhost:8000/health`
+- **MCP Status**: `http://localhost:8000/mcp/status`
 - **Project Management**: `http://localhost:8000/api/projects`
 - **Memory Search**: `http://localhost:8000/api/projects/{name}/memories`
 - **Thinking Sequences**: `http://localhost:8000/api/projects/{name}/thinking`
 - **Analytics**: `http://localhost:8000/api/analytics`
+- **Web UI**: `http://localhost:8000/ui`
 
-## MCP Client Connection
+**Service Endpoints:**
+- **PostgreSQL**: `localhost:5432` (if exposed)
+- **Ollama API**: `http://localhost:11434/api/version`
 
-For MCP clients (like Claude Desktop):
+## 🔌 MCP Client Connection
+
+### For MCP clients (like Claude Desktop):
 
 ```json
 {
   "mcpServers": {
     "minime": {
       "command": "docker",
-      "args": ["exec", "-i", "minime-mcp", "node", "/app/src/server.js", "--stdio"],
+      "args": ["exec", "-i", "minime-mcp", "node", "/app/src/mcp-stdio.js"],
       "env": {
-        "MCP_STDIO": "true"
+        "DATABASE_URL": "postgresql://minime:password@postgres:5432/minime_memories",
+        "OLLAMA_HOST": "http://ollama:11434"
       }
     }
   }
 }
+```
+
+### Important Notes:
+- **Database must be running** before MCP client connects
+- Use `docker-compose ps` to verify all services are healthy
+- MCP server will wait for dependencies automatically
+
+## 📋 Quick Reference
+
+```bash
+# Start everything
+cd build && make up
+
+# Check status
+make status
+
+# View logs
+make logs-mcp
+
+# Stop everything  
+make down
+
+# Emergency reset
+make clean
 ```

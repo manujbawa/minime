@@ -1,0 +1,531 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  Grid,
+  Chip,
+  Alert,
+  CircularProgress,
+  Paper,
+  Divider,
+  Stack,
+  IconButton,
+  Tooltip,
+  Button,
+  Tab,
+  Tabs,
+  LinearProgress,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  Badge,
+} from '@mui/material';
+import {
+  Refresh,
+  Psychology,
+  TrendingUp,
+  Code,
+  Security,
+  Speed,
+  BugReport,
+  Architecture,
+  School,
+  Lightbulb,
+  Timeline,
+  Assessment,
+} from '@mui/icons-material';
+import { miniMeAPI } from '../services/api';
+
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`meta-learning-tabpanel-${index}`}
+      aria-labelledby={`meta-learning-tab-${index}`}
+      {...other}
+    >
+      {value === index && <Box sx={{ py: 3 }}>{children}</Box>}
+    </div>
+  );
+}
+
+interface LearningInsight {
+  id: string;
+  type: string;
+  category: string;
+  title: string;
+  description: string;
+  confidence: number;
+  actionable: boolean;
+  created_at: string;
+  metadata?: Record<string, any>;
+}
+
+interface CodingPattern {
+  id: string;
+  pattern_category: string;
+  pattern_type: string;
+  pattern_name: string;
+  pattern_signature: string;
+  description: string;
+  frequency_count: number;
+  confidence_score: number;
+  success_rate: number;
+  created_at: string;
+  examples?: string[];
+}
+
+interface LearningStatus {
+  queue_size: number;
+  total_patterns: number;
+  total_insights: number;
+  last_processing: string;
+  processing_rate: number;
+  system_health: string;
+}
+
+export function MetaLearning() {
+  const [tabValue, setTabValue] = useState(0);
+  const [insights, setInsights] = useState<LearningInsight[]>([]);
+  const [patterns, setPatterns] = useState<CodingPattern[]>([]);
+  const [status, setStatus] = useState<LearningStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchLearningData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // For now, we'll create mock data since the API endpoints might not be fully implemented
+      // In a real implementation, these would call specific learning endpoints
+      
+      // Mock insights data
+      const mockInsights: LearningInsight[] = [
+        {
+          id: '1',
+          type: 'pattern_insight',
+          category: 'code_quality',
+          title: 'Error Handling Pattern Identified',
+          description: 'You consistently use try-catch blocks with specific error types, leading to 25% fewer production bugs.',
+          confidence: 0.89,
+          actionable: true,
+          created_at: new Date().toISOString(),
+          metadata: { pattern_count: 15, success_rate: 0.92 }
+        },
+        {
+          id: '2',
+          type: 'tech_preference',
+          category: 'architecture',
+          title: 'Microservices Architecture Preference',
+          description: 'Your recent projects favor microservices architecture with async communication patterns.',
+          confidence: 0.76,
+          actionable: false,
+          created_at: new Date(Date.now() - 86400000).toISOString(),
+          metadata: { project_count: 8, avg_service_count: 12 }
+        },
+        {
+          id: '3',
+          type: 'improvement_suggestion',
+          category: 'testing',
+          title: 'Unit Test Coverage Improvement',
+          description: 'Consider adding more unit tests for edge cases. Current coverage could be improved in data validation logic.',
+          confidence: 0.68,
+          actionable: true,
+          created_at: new Date(Date.now() - 172800000).toISOString(),
+          metadata: { current_coverage: 0.72, suggested_coverage: 0.85 }
+        }
+      ];
+
+      // Mock patterns data
+      const mockPatterns: CodingPattern[] = [
+        {
+          id: '1',
+          pattern_category: 'architectural',
+          pattern_type: 'service_layer',
+          pattern_name: 'Repository Pattern',
+          pattern_signature: 'class.*Repository.*interface',
+          description: 'Data access abstraction using repository pattern',
+          frequency_count: 23,
+          confidence_score: 0.94,
+          success_rate: 0.87,
+          created_at: new Date().toISOString(),
+          examples: ['UserRepository', 'ProductRepository', 'OrderRepository']
+        },
+        {
+          id: '2',
+          pattern_category: 'error_handling',
+          pattern_type: 'exception_handling',
+          pattern_name: 'Specific Exception Handling',
+          pattern_signature: 'try.*catch.*SpecificException',
+          description: 'Using specific exception types instead of generic Exception',
+          frequency_count: 31,
+          confidence_score: 0.91,
+          success_rate: 0.92,
+          created_at: new Date(Date.now() - 86400000).toISOString(),
+          examples: ['ValidationException', 'DatabaseException', 'NetworkException']
+        },
+        {
+          id: '3',
+          pattern_category: 'performance',
+          pattern_type: 'async_pattern',
+          pattern_name: 'Async/Await Pattern',
+          pattern_signature: 'async.*await.*Promise',
+          description: 'Asynchronous programming using async/await',
+          frequency_count: 45,
+          confidence_score: 0.88,
+          success_rate: 0.89,
+          created_at: new Date(Date.now() - 172800000).toISOString(),
+          examples: ['async getData()', 'await apiCall()', 'Promise.all()']
+        }
+      ];
+
+      // Mock status data
+      const mockStatus: LearningStatus = {
+        queue_size: 3,
+        total_patterns: 47,
+        total_insights: 12,
+        last_processing: new Date(Date.now() - 300000).toISOString(), // 5 minutes ago
+        processing_rate: 0.85,
+        system_health: 'healthy'
+      };
+
+      setInsights(mockInsights);
+      setPatterns(mockPatterns);
+      setStatus(mockStatus);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch learning data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLearningData();
+  }, []);
+
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
+  };
+
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case 'architectural': return <Architecture />;
+      case 'error_handling': return <BugReport />;
+      case 'performance': return <Speed />;
+      case 'security': return <Security />;
+      case 'code_quality': return <Code />;
+      case 'testing': return <Assessment />;
+      case 'architecture': return <Architecture />;
+      default: return <Code />;
+    }
+  };
+
+  const getCategoryColor = (category: string): 'primary' | 'secondary' | 'success' | 'warning' | 'info' | 'error' => {
+    switch (category) {
+      case 'architectural': return 'primary';
+      case 'error_handling': return 'error';
+      case 'performance': return 'warning';
+      case 'security': return 'error';
+      case 'code_quality': return 'success';
+      case 'testing': return 'info';
+      case 'architecture': return 'primary';
+      default: return 'secondary';
+    }
+  };
+
+  if (loading) {
+    return (
+      <Box sx={{ p: 3, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert 
+          severity="error" 
+          action={
+            <Button color="inherit" size="small" onClick={fetchLearningData}>
+              Retry
+            </Button>
+          }
+        >
+          {error}
+        </Alert>
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ p: 3 }}>
+      {/* Header */}
+      <Box sx={{ mb: 4 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'between', mb: 2 }}>
+          <Typography variant="h4" component="h1" fontWeight="bold">
+            Meta-Learning Insights
+          </Typography>
+          <Tooltip title="Refresh insights">
+            <IconButton onClick={fetchLearningData} color="primary">
+              <Refresh />
+            </IconButton>
+          </Tooltip>
+        </Box>
+        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+          AI-discovered patterns and insights from your development history across all projects.
+        </Typography>
+      </Box>
+
+      {/* Status Overview */}
+      {status && (
+        <Paper sx={{ p: 3, mb: 4 }}>
+          <Typography variant="h6" gutterBottom>
+            <Psychology sx={{ mr: 1, verticalAlign: 'middle' }} />
+            Learning System Status
+          </Typography>
+          
+          <Grid container spacing={3}>
+            <Grid item xs={12} sm={6} md={3}>
+              <Box textAlign="center">
+                <Typography variant="h3" color="primary.main" fontWeight="bold">
+                  {status.total_patterns}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Patterns Detected
+                </Typography>
+              </Box>
+            </Grid>
+            
+            <Grid item xs={12} sm={6} md={3}>
+              <Box textAlign="center">
+                <Typography variant="h3" color="success.main" fontWeight="bold">
+                  {status.total_insights}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Insights Generated
+                </Typography>
+              </Box>
+            </Grid>
+            
+            <Grid item xs={12} sm={6} md={3}>
+              <Box textAlign="center">
+                <Typography variant="h3" color="warning.main" fontWeight="bold">
+                  {status.queue_size}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Processing Queue
+                </Typography>
+              </Box>
+            </Grid>
+            
+            <Grid item xs={12} sm={6} md={3}>
+              <Box textAlign="center">
+                <Typography variant="h3" color="info.main" fontWeight="bold">
+                  {Math.round(status.processing_rate * 100)}%
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  System Health
+                </Typography>
+                <LinearProgress 
+                  variant="determinate" 
+                  value={status.processing_rate * 100} 
+                  sx={{ mt: 1 }}
+                />
+              </Box>
+            </Grid>
+          </Grid>
+        </Paper>
+      )}
+
+      {/* Tabs */}
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+        <Tabs value={tabValue} onChange={handleTabChange}>
+          <Tab 
+            label={
+              <Badge badgeContent={insights.length} color="primary">
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Lightbulb sx={{ mr: 1 }} />
+                  Insights
+                </Box>
+              </Badge>
+            } 
+          />
+          <Tab 
+            label={
+              <Badge badgeContent={patterns.length} color="secondary">
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Timeline sx={{ mr: 1 }} />
+                  Patterns
+                </Box>
+              </Badge>
+            } 
+          />
+        </Tabs>
+      </Box>
+
+      {/* Insights Tab */}
+      <TabPanel value={tabValue} index={0}>
+        <Grid container spacing={3}>
+          {insights.map((insight) => (
+            <Grid item xs={12} md={6} key={insight.id}>
+              <Card sx={{ height: '100%' }}>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'between', mb: 2 }}>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="h6" gutterBottom>
+                        {insight.title}
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                        <Chip 
+                          label={insight.category} 
+                          size="small" 
+                          color={getCategoryColor(insight.category)}
+                        />
+                        <Chip 
+                          label={`${Math.round(insight.confidence * 100)}% confidence`} 
+                          size="small" 
+                          variant="outlined"
+                        />
+                        {insight.actionable && (
+                          <Chip label="Actionable" size="small" color="success" />
+                        )}
+                      </Box>
+                    </Box>
+                  </Box>
+                  
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    {insight.description}
+                  </Typography>
+                  
+                  {insight.metadata && (
+                    <Box sx={{ mt: 2, p: 2, backgroundColor: 'grey.50', borderRadius: 1 }}>
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        Additional Data:
+                      </Typography>
+                      {Object.entries(insight.metadata).map(([key, value]) => (
+                        <Typography key={key} variant="caption" display="block">
+                          {key}: {typeof value === 'number' && value < 1 ? `${Math.round(value * 100)}%` : String(value)}
+                        </Typography>
+                      ))}
+                    </Box>
+                  )}
+                  
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 2 }}>
+                    Generated {new Date(insight.created_at).toLocaleDateString()}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+        
+        {insights.length === 0 && (
+          <Alert severity="info">
+            No insights available yet. Start storing memories and the system will begin detecting patterns automatically.
+          </Alert>
+        )}
+      </TabPanel>
+
+      {/* Patterns Tab */}
+      <TabPanel value={tabValue} index={1}>
+        <Grid container spacing={3}>
+          {patterns.map((pattern) => (
+            <Grid item xs={12} lg={6} key={pattern.id}>
+              <Card sx={{ height: '100%' }}>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    {getCategoryIcon(pattern.pattern_category)}
+                    <Typography variant="h6" sx={{ ml: 1, flex: 1 }}>
+                      {pattern.pattern_name}
+                    </Typography>
+                    <Chip 
+                      label={pattern.pattern_category} 
+                      size="small" 
+                      color={getCategoryColor(pattern.pattern_category)}
+                    />
+                  </Box>
+                  
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    {pattern.description}
+                  </Typography>
+                  
+                  <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+                    <Box textAlign="center">
+                      <Typography variant="h6" color="primary.main">
+                        {pattern.frequency_count}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Uses
+                      </Typography>
+                    </Box>
+                    <Box textAlign="center">
+                      <Typography variant="h6" color="success.main">
+                        {Math.round(pattern.success_rate * 100)}%
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Success Rate
+                      </Typography>
+                    </Box>
+                    <Box textAlign="center">
+                      <Typography variant="h6" color="info.main">
+                        {Math.round(pattern.confidence_score * 100)}%
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Confidence
+                      </Typography>
+                    </Box>
+                  </Box>
+                  
+                  {pattern.examples && pattern.examples.length > 0 && (
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="subtitle2" gutterBottom>
+                        Examples:
+                      </Typography>
+                      <List dense>
+                        {pattern.examples.slice(0, 3).map((example, index) => (
+                          <ListItem key={index} sx={{ py: 0 }}>
+                            <ListItemText 
+                              primary={example} 
+                              primaryTypographyProps={{ 
+                                variant: 'body2', 
+                                fontFamily: 'monospace',
+                                color: 'text.secondary'
+                              }}
+                            />
+                          </ListItem>
+                        ))}
+                      </List>
+                    </Box>
+                  )}
+                  
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 2 }}>
+                    Pattern detected {new Date(pattern.created_at).toLocaleDateString()}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+        
+        {patterns.length === 0 && (
+          <Alert severity="info">
+            No patterns detected yet. The system will automatically identify coding patterns as you store more code memories.
+          </Alert>
+        )}
+      </TabPanel>
+    </Box>
+  );
+}

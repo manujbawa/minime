@@ -1,0 +1,115 @@
+⏺ Here are comprehensive test prompts for all MiniMe MCP tools. Test these one by one in Cursor:
+
+  1. Memory Management Tools
+
+  Can you store a memory about implementing a new authentication system using JWT tokens for the user login feature?
+
+  Search for memories related to authentication or login systems we've worked on before.
+
+  Store this bug report: "React component re-rendering issue causing performance problems in dashboard. Fixed by implementing useMemo
+  hook."
+
+  Can you get memory with ID 1 to see the details?
+
+  Update memory ID 1 to add more context about the authentication implementation.
+
+  Store a lesson learned: "Always validate user input on both frontend and backend to prevent security vulnerabilities."
+
+  2. Learning & Insights Tools
+
+  Can you get the current learning system status?
+
+  What learning insights can you provide about my coding patterns?
+
+  Trigger a learning analysis to detect new patterns from recent memories.
+
+  Generate insights about my technology preferences based on past projects.
+
+  3. Task Management Tools
+
+  Create a task to "Implement user dashboard with charts and analytics" for the MiniMe-MCP project.
+
+  Show me all pending tasks for the current project.
+
+  Update task ID 1 to mark it as completed.
+
+  Extract tasks from this requirement: "Build a REST API with user authentication, database integration, and email notifications."
+
+  Can you prioritize the tasks based on business impact and urgency?
+
+  4. Project & Context Tools
+
+  Get information about the current project we're working on.
+
+  List all projects in my workspace.
+
+  Can you get the current working directory and project context?
+
+  Store technical context about using PostgreSQL database with vector extensions for similarity search.
+
+  5. Code Analysis Tools
+
+  Analyze this code for patterns:
+  ```javascript
+  const authenticateUser = async (token) => {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const user = await User.findById(decoded.id);
+      return user;
+    } catch (error) {
+      throw new Error('Invalid token');
+    }
+  };
+
+  Can you suggest improvements for this React component?
+
+  Extract technical information from this description: "Using Node.js with Express framework, MongoDB database, and Redis for caching."
+
+  6. Cross-Project Analysis
+
+  Find patterns that appear across multiple projects in my workspace.
+
+  What technologies do I use most frequently across all projects?
+
+  Show me insights about code quality patterns from all my projects.
+
+  7. Session & Thinking Tools
+
+  Start a new thinking sequence about designing a scalable microservices architecture.
+
+  Get my recent thinking processes and their outcomes.
+
+  Continue the thinking process about API design best practices.
+
+  8. Advanced Analysis
+
+  Perform a comprehensive analysis of my development patterns over the last month.
+
+  What are the most common bugs or issues I encounter in my projects?
+
+  Generate a summary of my learning progress and skill development.
+
+  9. Integration Testing
+
+  Store a complex memory about implementing a microservices architecture with Docker, Kubernetes, PostgreSQL, Redis, and Node.js APIs,
+  then immediately search for similar architectural patterns.
+
+  Create multiple tasks for building a full-stack application, then prioritize them and check the learning insights about task management
+   patterns.
+
+  10. Error Testing
+
+  Try to get a non-existent memory with ID 999999.
+
+  Try to update a task that doesn't exist.
+
+  Search for memories with very specific criteria that might not match anything.
+
+  Expected Results:
+
+  - Memory tools should store, retrieve, and search successfully
+  - Learning system should show "OPERATIONAL" status
+  - Tasks should be created, updated, and prioritized
+  - Insights should be generated about your coding patterns
+  - Project analysis should work across your workspace
+  - Error cases should be handled gracefully with informative messages

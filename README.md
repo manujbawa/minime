@@ -30,8 +30,8 @@ MiniMe-MCP is a containerized Model Context Protocol (MCP) server that provides 
                               │
                     ┌─────────────────┐
                     │     Ollama      │
-                    │   deepseek-     │
-                    │   coder:6.7b    │
+                    │  nomic-embed-   │
+                    │     text        │
                     └─────────────────┘
 ```
 
@@ -40,7 +40,7 @@ MiniMe-MCP is a containerized Model Context Protocol (MCP) server that provides 
 ✅ **Phase 1 Complete: Foundation**
 - Multi-stage Docker build with Debian 12-slim (security-focused)
 - PostgreSQL 15 + pgvector extension for vector similarity search
-- Ollama integration with deepseek-coder:6.7b-instruct model
+- Ollama integration with nomic-embed-text model for embeddings
 - Non-root container operation (UID/GID 1000:1000)
 - Complete database schema for multi-project isolation
 
@@ -77,13 +77,76 @@ MiniMe-MCP is a containerized Model Context Protocol (MCP) server that provides 
 
 ## Quick Start
 
-### Build and Run
+### Single Container Build (Recommended)
 
 ```bash
-cd build
-docker build -t mini.me-mcp .
-docker run --rm -p 8000:8000 mini.me-mcp
+# Clone the repository
+git clone <repository-url>
+cd minime-mcp
+
+# Quick start - builds everything and starts the container
+make all
+
+# Check service health
+make health
 ```
+
+### Service URLs
+- **Web UI**: http://localhost:8080
+- **MCP Server**: http://localhost:8000
+- **MCP Health**: http://localhost:8000/health
+- **UI Health**: http://localhost:8080/health
+- **MCP Status**: http://localhost:8000/mcp/status
+
+### Common Commands
+
+```bash
+# Service management
+make up          # Start container
+make down        # Stop container
+make restart     # Restart container
+make status      # Show status and health
+
+# Logs and debugging
+make logs        # All logs
+make logs-mcp    # MCP server logs
+make logs-db     # Database logs
+make debug       # Start with extensive MCP tool debugging
+make debug-logs  # Watch debug logs (filtered)
+make shell       # Open shell in container
+
+# Cleanup
+make clean       # Clean up everything
+make rebuild     # Complete rebuild
+```
+
+### Project Structure
+
+```
+minime-mcp/
+├── README.md              # This file
+├── Makefile              # Root makefile (delegates to build/)
+├── src/                  # MCP server source code
+├── ui/                   # Web UI source code
+├── build/                # Build scripts, Dockerfiles, database
+│   ├── Makefile         # Main build system
+│   ├── Dockerfile.*     # Container definitions
+│   ├── database/        # SQL schemas and migrations
+│   └── *.sh            # Build and setup scripts
+└── test-scripts/        # Testing and validation scripts
+```
+
+### Advanced: Build with Local Models ⚡
+
+The build system automatically detects and copies local Ollama models to reduce startup time:
+
+```bash
+# All handled automatically by make all
+# Local models are detected in ~/.ollama and copied to container
+# Saves 5-15 minutes on startup
+```
+
+> **💡 Pro Tip:** Local model copying includes only the essential `nomic-embed-text` model (274MB) to keep the container small while eliminating runtime downloads. See [LOCAL_MODELS.md](LOCAL_MODELS.md) for details.
 
 ### Health Check
 
@@ -100,7 +163,7 @@ Expected response:
   "services": {
     "database": "configured",
     "ollama": "configured", 
-    "model": "deepseek-coder:6.7b-instruct"
+    "model": "nomic-embed-text"
   }
 }
 ```
