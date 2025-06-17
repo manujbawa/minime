@@ -144,20 +144,46 @@ export function Dashboard() {
     }
   };
 
-  // Sample chart data
-  const memoryGrowthData = [
-    { date: 'Week 1', memories: 2, sequences: 1 },
-    { date: 'Week 2', memories: 5, sequences: 2 },
-    { date: 'Week 3', memories: 8, sequences: 3 },
-    { date: 'Week 4', memories: 12, sequences: 5 },
-  ];
+  // Real chart data based on actual statistics
+  const getRealMemoryGrowthData = () => {
+    const stats = getFilteredStats();
+    const totalMemories = parseInt(stats?.database?.memories?.total_memories || '0');
+    const totalSequences = stats?.thinking?.total_sequences || 0;
+    
+    // If no data, return empty array
+    if (totalMemories === 0 && totalSequences === 0) {
+      return [];
+    }
+    
+    // For now, show current totals as a single data point
+    // TODO: Implement historical tracking in backend
+    return [
+      { 
+        date: 'Current', 
+        memories: totalMemories, 
+        sequences: totalSequences 
+      },
+    ];
+  };
 
-  const memoryTypeData = [
-    { name: 'Insights', value: 5, color: CHART_COLORS[0] },
-    { name: 'Code', value: 3, color: CHART_COLORS[1] },
-    { name: 'Decisions', value: 2, color: CHART_COLORS[2] },
-    { name: 'Bugs', value: 2, color: CHART_COLORS[3] },
-  ];
+  const getRealMemoryTypeData = () => {
+    const stats = getFilteredStats();
+    const totalMemories = parseInt(stats?.database?.memories?.total_memories || '0');
+    
+    // If no memories, return empty array
+    if (totalMemories === 0) {
+      return [];
+    }
+    
+    // TODO: Get actual memory type distribution from backend
+    // For now, show that we have memories but no type breakdown available
+    return [
+      { name: 'All Memories', value: totalMemories, color: CHART_COLORS[0] },
+    ];
+  };
+
+  const memoryGrowthData = getRealMemoryGrowthData();
+  const memoryTypeData = getRealMemoryTypeData();
 
   if (loading && !health) {
     return (
@@ -388,16 +414,35 @@ export function Dashboard() {
                 Memory & Sequence Growth
               </Typography>
               <Box sx={{ height: 300 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={memoryGrowthData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="memories" stroke={CHART_COLORS[0]} strokeWidth={2} name="Memories" />
-                    <Line type="monotone" dataKey="sequences" stroke={CHART_COLORS[1]} strokeWidth={2} name="Sequences" />
-                  </LineChart>
-                </ResponsiveContainer>
+                {memoryGrowthData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={memoryGrowthData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis />
+                      <Tooltip />
+                      <Line type="monotone" dataKey="memories" stroke={CHART_COLORS[0]} strokeWidth={2} name="Memories" />
+                      <Line type="monotone" dataKey="sequences" stroke={CHART_COLORS[1]} strokeWidth={2} name="Sequences" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <Box sx={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    height: '100%',
+                    color: 'text.secondary'
+                  }}>
+                    <TrendingUp sx={{ fontSize: 48, mb: 2, opacity: 0.5 }} />
+                    <Typography variant="body1" gutterBottom>
+                      No data available yet
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Start storing memories and creating thinking sequences to see growth trends
+                    </Typography>
+                  </Box>
+                )}
               </Box>
             </CardContent>
           </Card>
@@ -410,25 +455,44 @@ export function Dashboard() {
                 Memory Types Distribution
               </Typography>
               <Box sx={{ height: 300 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={memoryTypeData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {memoryTypeData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+                {memoryTypeData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={memoryTypeData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {memoryTypeData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <Box sx={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    height: '100%',
+                    color: 'text.secondary'
+                  }}>
+                    <Storage sx={{ fontSize: 48, mb: 2, opacity: 0.5 }} />
+                    <Typography variant="body1" gutterBottom>
+                      No memories stored yet
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Store memories with different types to see distribution analysis
+                    </Typography>
+                  </Box>
+                )}
               </Box>
             </CardContent>
           </Card>

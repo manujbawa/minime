@@ -1,25 +1,314 @@
-# MiniMe-MCP: Multi-Project Memory & Sequential Thinking Server
+# MiniMe MCP - AI Memory & Sequential Thinking Server
 
-## Project Overview
+**Transform your AI development workflow with persistent memory, intelligent context management, and structured reasoning capabilities.**
 
-MiniMe-MCP is a containerized Model Context Protocol (MCP) server that provides persistent memory storage and structured sequential thinking capabilities across multiple projects. It serves as a "digital twin" that learns coding patterns, stores contextual memories, and facilitates complex reasoning workflows for AI systems and developers.
+MiniMe MCP is a production-ready Model Context Protocol (MCP) server that serves as your "digital developer twin" - learning from your coding patterns, storing contextual memories, and facilitating complex reasoning workflows across all your projects.
 
-🔗 **For complete specifications, see [PRD.md](PRD.md)**
+## 🚀 Quick Start (2 Minutes)
 
-## Architecture
+### Prerequisites
+- **Docker Desktop** or Docker Engine
+- **Node.js** 18+ 
+- **Cursor IDE** or **VS Code** with Claude extension
+
+### 1. Install MCP Client
+```bash
+npm install -g @minimemcp/mcp-client
+```
+
+### 2. Run MiniMe Server
+```bash
+# Docker will automatically create the volume if it doesn't exist
+docker run -d \
+  --name minimemcp \
+  -p 8000:8000 \
+  -p 9000:9000 \
+  -v minime-data:/data \
+  -e POSTGRES_PASSWORD=minime_password \
+  -e USE_LOCAL_MODELS=true \
+  -e LOAD_SAMPLE_DATA=true \
+  manujbawa/minimemcp:latest
+```
+
+> **💡 Note**: The `minime-data` volume will be automatically created by Docker to persist your project data, memories, and database.
+
+### 3. Configure Cursor IDE
+1. Open Cursor Settings (`Cmd+,` on macOS, `Ctrl+,` on Windows/Linux)
+2. Navigate to **Tools and Integration** → **MCP Tools**
+3. Click **Add** button
+4. Paste this configuration:
+
+```json
+{
+  "mcpServers": {
+    "minime": {
+      "command": "minime-mcp",
+      "env": {
+        "MINIME_SERVER_URL": "http://localhost:8000",
+        "MINIME_DEBUG": "true"
+      }
+    }
+  }
+}
+```
+
+5. Restart Cursor
+
+### 4. Start Using AI Memory
+- **MCP Server**: http://localhost:8000
+- **Web UI Dashboard**: http://localhost:9000
+
+Say to Claude in Cursor: *"Let's get into planning mode: I want to build a React dashboard"* and watch MiniMe automatically create project briefs, tasks, and intelligent suggestions based on your past development patterns!
+
+## 🧠 What Makes MiniMe Special
+
+### 🎯 **Intelligent Planning Mode**
+Ask Claude: *"Help me plan this project"* and MiniMe automatically:
+- Creates comprehensive project documentation
+- Breaks down requirements into actionable tasks
+- Suggests improvements based on your past patterns
+- Provides structured reasoning for complex decisions
+
+### 🔍 **Persistent AI Memory**
+- **Semantic Search**: Find solutions from your entire development history
+- **Pattern Learning**: Discovers your preferred technologies, architectures, and approaches
+- **Context Awareness**: Remembers project contexts, decisions, and lessons learned
+- **Cross-Project Insights**: Applies learnings from one project to another
+
+### 🧩 **Sequential Thinking Engine**
+- **Structured Reasoning**: Break down complex technical decisions step-by-step
+- **Branching Logic**: Explore multiple solution paths
+- **Decision Audit Trail**: Track how and why decisions were made
+- **Collaborative Thinking**: Build on previous reasoning sessions
+
+## 🛠 Available Tools
+
+Once configured, you'll have access to these powerful MiniMe tools in Cursor:
+
+### **Planning & Documentation**
+- **`create_project_brief`**: Generate enterprise-grade project documentation
+- **`create_tasks`**: Convert requirements into actionable tasks
+- **`suggest_tasks`**: AI-powered project improvement suggestions
+
+### **Memory Management**
+- **`store_memory`**: Save development information with AI context understanding
+- **`search_memories`**: Find relevant memories using semantic search
+- **`get_learning_insights`**: Discover patterns from your development history
+
+### **Progress Tracking**
+- **`store_progress`**: Track project evolution with automatic versioning
+- **`get_progress_history`**: Generate comprehensive project status reports
+
+### **Structured Reasoning**
+- **`start_thinking_sequence`**: Begin complex technical decision analysis
+- **`add_thought`**: Build on reasoning with confidence tracking
+- **`complete_thinking_sequence`**: Finalize decisions with actionable outcomes
+
+## 📦 Installation Options
+
+### Option 1: Docker Hub (Recommended)
+```bash
+# Pull and run latest version
+docker pull manujbawa/minimemcp:latest
+docker run -d \
+  --name minimemcp \
+  -p 8000:8000 \
+  -p 9000:9000 \
+  -v minime-data:/data \
+  manujbawa/minimemcp:latest
+```
+
+> **💡 Note**: Add `-v minime-data:/data` to persist your data across container restarts.
+
+**Docker Hub**: https://hub.docker.com/r/manujbawa/minimemcp
+
+### Option 2: NPM Package
+```bash
+# Global installation for command-line usage
+npm install -g @minimemcp/mcp-client
+```
+
+**NPM Package**: https://www.npmjs.com/package/@minimemcp/mcp-client
+
+## 🎯 VS Code Configuration
+
+### 1. Install Claude Extension
+Install the Claude Dev extension from VS Code marketplace.
+
+### 2. Configure MCP Server
+Open VS Code Settings JSON (`Ctrl+Shift+P` → "Preferences: Open User Settings (JSON)"):
+
+```json
+{
+  "claude.mcpServers": {
+    "minime": {
+      "command": "minime-mcp",
+      "env": {
+        "MINIME_SERVER_URL": "http://localhost:8000",
+        "MINIME_DEBUG": "true"
+      }
+    }
+  }
+}
+```
+
+### 3. Workspace Settings
+Alternatively, create `.vscode/settings.json` in your project:
+
+```json
+{
+  "claude.mcpServers": {
+    "minime": {
+      "command": "minime-mcp",
+      "env": {
+        "MINIME_SERVER_URL": "http://localhost:8000",
+        "MINIME_DEBUG": "true"
+      }
+    }
+  }
+}
+```
+
+## 🖥 Claude Desktop Configuration
+
+### 1. Install Claude Desktop
+Download from [claude.ai/desktop](https://claude.ai/desktop)
+
+### 2. Configure MCP Server
+Edit Claude Desktop config file:
+
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+**Linux**: `~/.config/Claude/claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "minime": {
+      "command": "minime-mcp",
+      "env": {
+        "MINIME_SERVER_URL": "http://localhost:8000",
+        "MINIME_DEBUG": "true"
+      }
+    }
+  }
+}
+```
+
+### 3. Restart Claude Desktop
+Close and reopen Claude Desktop. The MiniMe tools should appear in your chat.
+
+## ✅ Verification
+
+### 1. Health Check
+```bash
+curl http://localhost:8000/health
+```
+
+Expected response:
+```json
+{
+  "status": "healthy",
+  "services": {
+    "database": "healthy",
+    "embeddings": "healthy" 
+  }
+}
+```
+
+### 2. Test MCP Client
+```bash
+# Test the MCP client directly
+MINIME_SERVER_URL=http://localhost:8000 minime-mcp
+# Should connect and show available tools
+```
+
+### 3. Verify UI Access
+1. Open http://localhost:9000
+2. Navigate to "Projects" 
+3. Click "View Details" on any project
+4. Verify all tabs load (Overview, Briefs, Progress, Tasks, Timeline, Thinking)
+
+### 4. Test IDE Integration
+**In Cursor/VS Code with Claude:**
+
+1. Open chat with Claude
+2. Ask: "What MCP tools are available?"
+3. You should see MiniMe tools listed
+4. Try: "Let's get into planning mode: I want to build a Python API"
+5. Verify the tools execute and create project documentation
+
+## 🔧 Troubleshooting
+
+### Docker Container Issues
+```bash
+# Check if Docker is running
+docker --version
+
+# Check container status
+docker ps -a -f name=minimemcp
+
+# View container logs
+docker logs minimemcp
+
+# Restart container
+docker restart minimemcp
+```
+
+### Port Conflicts
+```bash
+# Check what's using ports
+lsof -i :8000
+lsof -i :9000
+
+# Use different ports if needed
+docker run -d --name minimemcp -p 8001:8000 -p 9001:9000 manujbawa/minimemcp:latest
+```
+
+### MCP Client Issues
+```bash
+# Check if globally installed
+which minime-mcp
+
+# Reinstall if missing
+npm uninstall -g @minimemcp/mcp-client
+npm install -g @minimemcp/mcp-client
+
+# Test connection
+MINIME_SERVER_URL=http://localhost:8000 MINIME_DEBUG=true minime-mcp
+```
+
+### IDE Integration Problems
+- Verify server is running: `docker ps -f name=minimemcp`
+- Test MCP client manually: `MINIME_SERVER_URL=http://localhost:8000 minime-mcp`
+- Ensure correct configuration: `"command": "minime-mcp"` (not npx)
+- Restart IDE after configuration changes
+- Check IDE extension logs for MCP errors
+
+## 🎉 Next Steps
+
+After installation:
+
+1. **Explore UI**: Visit http://localhost:9000
+2. **Try Planning Mode**: Ask Claude "Let's get into planning mode for a new project"
+3. **Store Memories**: Start building your knowledge base with development decisions
+4. **Track Progress**: Use project briefs and progress tracking features
+5. **Sequential Thinking**: Try complex reasoning workflows for architectural decisions
+
+## 🏗 Architecture Overview
 
 ### Multi-Project Container System
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    MiniMe-MCP Server                    │
-│                     HTTP/REST API                      │
+│                    MiniMe MCP Server                    │
+│                     HTTP/REST API                       │
 │                     (Port 8000)                        │
 ├─────────────────────────────────────────────────────────┤
-│  Project Management  │  Memory Storage  │  Sequential   │
-│  • Create/List       │  • Store/Retrieve│  Thinking     │
-│  • Update/Delete     │  • Vector Search │  • Sequences  │
-│  • Session Mgmt      │  • Embeddings    │  • Branching  │
+│  Memory Storage  │  Sequential       │  Project        │
+│  • Vector Search │  Thinking         │  Management     │
+│  • Embeddings    │  • Sequences      │  • Briefs       │
+│  • Patterns      │  • Branching      │  • Tasks        │
 └─────────────────────────────────────────────────────────┘
                               │
                     ┌─────────────────┐
@@ -35,219 +324,377 @@ MiniMe-MCP is a containerized Model Context Protocol (MCP) server that provides 
                     └─────────────────┘
 ```
 
-## Current Status
+## 🔒 Security Features
 
-✅ **Phase 1 Complete: Foundation**
-- Multi-stage Docker build with Debian 12-slim (security-focused)
-- PostgreSQL 15 + pgvector extension for vector similarity search
-- Ollama integration with nomic-embed-text model for embeddings
-- Non-root container operation (UID/GID 1000:1000)
-- Complete database schema for multi-project isolation
+- **Non-root container execution** (UID/GID 1001)
+- **Debian 12 security-hardened base**
+- **No exposed secrets in runtime**
+- **Container isolation with volume persistence**
+- **Regular security scanning and updates**
 
-✅ **Phase 2 Complete: Database Architecture**
-- Multi-tenant schema with project isolation
-- Memory storage with 1536-dimensional vector embeddings
-- Sequential thinking system with branching and revision support
-- Performance-optimized indexes and views
-- Migration system with version control
+## 📊 Key Features
 
-🔄 **Phase 3 In Progress: Core API Implementation**
-- PostgreSQL data access layer
-- Project and session management APIs
-- Memory storage and retrieval endpoints
+### **Multi-Project Isolation**
+- Complete data separation between projects
+- Session-based organization within projects
+- No cross-project data leakage possible
 
-## Key Features
+### **Vector Memory Storage**
+- pgvector integration for semantic search
+- 1536-dimensional embeddings (OpenAI compatible)
+- HNSW indexing for fast similarity search
+- Memory relationships and categorization
 
-### Multi-Project Isolation
-- **Projects**: Top-level isolation boundary for different codebases
-- **Sessions**: Grouping mechanism within projects (memory, thinking, mixed)
-- **Complete Data Separation**: No cross-project data leakage possible
+### **Sequential Thinking System**
+- Structured step-by-step reasoning
+- Branching logic for exploring alternatives
+- Revision support for improving thoughts
+- Confidence tracking and decision audit trails
 
-### Vector Memory Storage
-- **pgvector Integration**: High-performance vector similarity search
-- **1536-dimensional Embeddings**: Compatible with OpenAI and similar models  
-- **HNSW Indexing**: Fast approximate nearest neighbor search
-- **Memory Relationships**: Connect and categorize related memories
+### **Learning Intelligence**
+- Pattern detection across all projects
+- Technology preference learning
+- Anti-pattern identification
+- Success metric correlation
 
-### Sequential Thinking System
-- **Structured Reasoning**: Step-by-step thought progression with numbering
-- **Revision Support**: Update and improve previous thoughts
-- **Branching Logic**: Explore alternative reasoning paths from any point
-- **Progress Tracking**: Monitor completion and reasoning flow
+---
 
-## Quick Start
+# 👨‍💻 Developer Information
 
-### Single Container Build (Recommended)
+*The following section is for developers who want to contribute or build from source.*
 
+## 🛠 Development Setup
+
+### Requirements
+- **Docker Desktop** (recommended) or Docker Engine
+- **Node.js** 18+
+- **Git**
+- **Make** (for build automation)
+
+### 1. Clone Repository
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd minime-mcp
-
-# Quick start - builds everything and starts the container
-make all
-
-# Check service health
-make health
+git clone https://github.com/your-org/MiniMe-MCP.git
+cd MiniMe-MCP
 ```
 
-### Service URLs
-- **Web UI**: http://localhost:8080
-- **MCP Server**: http://localhost:8000
-- **MCP Health**: http://localhost:8000/health
-- **UI Health**: http://localhost:8080/health
-- **MCP Status**: http://localhost:8000/mcp/status
-
-### Common Commands
-
+### 2. Build from Source
 ```bash
-# Service management
-make up          # Start container
-make down        # Stop container
-make restart     # Restart container
-make status      # Show status and health
+# One-command setup - builds and starts everything
+cd build
+make all
+```
 
-# Logs and debugging
-make logs        # All logs
-make logs-mcp    # MCP server logs
-make logs-db     # Database logs
-make debug       # Start with extensive MCP tool debugging
-make debug-logs  # Watch debug logs (filtered)
-make shell       # Open shell in container
+This will:
+- Build Docker image with local models (PostgreSQL + Ollama)
+- Start MiniMe MCP server on port 8000
+- Start Web UI on port 9000
+- Load sample data and run health checks
+
+### 3. Development Commands
+```bash
+# Build and deployment
+make help          # Show all commands
+make build         # Build Docker image
+make up            # Start services
+make down          # Stop services
+make restart       # Restart services
+make rebuild       # Complete rebuild
+
+# Monitoring and debugging
+make logs          # View logs
+make status        # Check container status
+make health        # Run health checks
+make shell         # Open container shell
+make debug         # Start with debug logging
+make debug-logs    # Watch debug logs
+
+# Docker Hub publishing
+make login-hub     # Login to Docker Hub
+make tag-hub       # Tag images for Docker Hub
+make publish       # Publish to Docker Hub
 
 # Cleanup
-make clean       # Clean up everything
-make rebuild     # Complete rebuild
+make clean         # Clean up (WARNING: deletes data)
+make clean-images  # Clean old images only
 ```
 
-### Project Structure
-
+### 4. Project Structure
 ```
-minime-mcp/
-├── README.md              # This file
-├── Makefile              # Root makefile (delegates to build/)
-├── src/                  # MCP server source code
-├── ui/                   # Web UI source code
-├── build/                # Build scripts, Dockerfiles, database
-│   ├── Makefile         # Main build system
-│   ├── Dockerfile.*     # Container definitions
-│   ├── database/        # SQL schemas and migrations
-│   └── *.sh            # Build and setup scripts
-└── test-scripts/        # Testing and validation scripts
+MiniMe-MCP/
+├── README.md                     # This file
+├── INSTALLATION.md               # Detailed installation guide
+├── PRD.md                       # Product requirements
+├── CLAUDE.md                    # Claude Code instructions
+├── src/                         # MCP server source code
+│   ├── server.js               # Main HTTP server
+│   ├── mcp-stdio.js            # MCP stdio transport
+│   ├── package.json            # Node.js dependencies
+│   └── services/               # Core services
+│       ├── mcp-tools.js        # MCP tool implementations
+│       ├── database-service.js # Database operations
+│       ├── learning-pipeline.js # AI learning system
+│       └── ai-task-suggestion.js # Intelligent task suggestions
+├── ui/                         # React web dashboard
+│   ├── src/                    # React components
+│   ├── package.json            # UI dependencies
+│   └── server.js               # UI server
+├── mcp-client/                 # NPM package source
+│   ├── src/index.js            # MCP client implementation
+│   ├── bin/minime-mcp          # CLI binary
+│   ├── package.json            # Package configuration
+│   └── README.md               # Client documentation
+├── build/                      # Docker build context
+│   ├── Makefile                # Build automation
+│   ├── Dockerfile.local-models # Production Dockerfile
+│   ├── database/               # Database schemas
+│   │   ├── schema.sql          # Complete schema
+│   │   ├── migrations/         # Version migrations
+│   │   └── init.sql            # Database initialization
+│   ├── docker-entrypoint.sh    # Container startup
+│   └── *.sh                    # Build scripts
+└── test-scripts/               # Testing utilities
 ```
 
-### Advanced: Build with Local Models ⚡
-
-The build system automatically detects and copies local Ollama models to reduce startup time:
-
+### 5. Local Development Workflow
 ```bash
-# All handled automatically by make all
-# Local models are detected in ~/.ollama and copied to container
-# Saves 5-15 minutes on startup
+# Start with debug logging
+make debug
+
+# Watch debug logs in another terminal
+make debug-logs
+
+# Make code changes in src/ or ui/
+# Rebuild after changes
+make debug-rebuild
+
+# Test specific components
+make test
 ```
 
-> **💡 Pro Tip:** Local model copying includes only the essential `nomic-embed-text` model (274MB) to keep the container small while eliminating runtime downloads. See [LOCAL_MODELS.md](LOCAL_MODELS.md) for details.
-
-### Health Check
-
+### 6. Database Development
 ```bash
+# Access database directly
+make shell-db
+
+# Check database logs
+make logs-db
+
+# Reset database (WARNING: deletes data)
+make clean && make build && make up
+```
+
+### 7. Contributing Guidelines
+
+#### Code Style
+- Follow existing patterns in the codebase
+- Use explicit error handling
+- Add logging for debugging
+- Document complex functions
+
+#### MCP Tools Development
+- Add tools to `src/services/mcp-tools.js`
+- Include comprehensive descriptions with examples
+- Add AUTO-TRIGGER patterns for agent usage
+- Test tools via HTTP API and MCP client
+
+#### Database Changes
+- Create migration files in `build/database/migrations/`
+- Update schema.sql for new installations
+- Test migrations with sample data
+
+#### UI Development
+```bash
+# UI-specific development
+cd ui
+npm install
+npm run dev  # Start development server
+
+# Build for production
+npm run build
+```
+
+### 8. Testing
+```bash
+# Health checks
+make health
+
+# MCP client testing
+cd mcp-client
+MINIME_SERVER_URL=http://localhost:8000 MINIME_DEBUG=true node src/index.js
+
+# API testing
 curl http://localhost:8000/health
+curl http://localhost:8000/mcp/status
+
+# UI testing
+curl http://localhost:9000
 ```
 
-Expected response:
-```json
-{
-  "status": "healthy",
-  "version": "0.1.0", 
-  "phase": "Complete Installation - All Services",
-  "services": {
-    "database": "configured",
-    "ollama": "configured", 
-    "model": "nomic-embed-text"
-  }
-}
+### 9. Security Scanning
+```bash
+# Run Trivy security scan
+trivy image --severity HIGH,CRITICAL minimemcp:latest
+
+# Check for vulnerabilities
+npm audit
+
+# Update dependencies
+npm update
 ```
 
-## Database Schema
+### 10. Publishing Workflow
+
+#### NPM Package
+```bash
+cd mcp-client
+npm version patch  # Increment version
+npm publish       # Publish to NPM
+```
+
+#### Docker Hub
+```bash
+cd build
+make publish      # Build, tag, and push to Docker Hub
+```
+
+## 🗂 Database Schema
 
 ### Multi-Tenant Design
 ```sql
 -- Project isolation
 projects (id, name, description, created_at, updated_at)
-sessions (id, project_id, session_name, session_type, metadata, created_at, updated_at)
+sessions (id, project_id, session_name, session_type, metadata)
 
 -- Memory storage with vector search  
-memories (id, project_id, session_id, content, memory_type, embedding, metadata, created_at, updated_at)
+memories (id, project_id, session_id, content, memory_type, embedding, metadata)
 
 -- Sequential thinking system
-thinking_sequences (id, project_id, session_id, sequence_name, description, is_complete, metadata, created_at, updated_at)
-thoughts (id, sequence_id, thought_number, total_thoughts, content, next_thought_needed, is_revision, revises_thought_id, branch_from_thought_id, branch_id, metadata, created_at)
-thinking_branches (id, sequence_id, branch_id, branch_from_thought_id, branch_name, description, is_active, created_at)
+thinking_sequences (id, project_id, session_id, sequence_name, description, is_complete)
+thoughts (id, sequence_id, thought_number, content, confidence, metadata)
+
+-- Progress and task tracking
+progress_entries (id, project_id, progress_description, version, completion_percentage)
+tasks (id, project_id, description, status, priority, estimated_hours)
+
+-- Learning and pattern detection
+learning_insights (id, insight_type, pattern_data, confidence_score, projects_analyzed)
 ```
 
-## File Structure
+## 🔧 Configuration Options
 
+### Environment Variables
+```bash
+# Server configuration
+MINIME_SERVER_URL=http://localhost:8000    # Server URL
+MCP_PORT=8000                              # MCP server port
+UI_PORT=9000                               # UI server port
+
+# Database configuration
+POSTGRES_PASSWORD=minime_password          # Database password
+POSTGRES_DB=minime_memories               # Database name
+POSTGRES_USER=minime                      # Database user
+
+# Features
+USE_LOCAL_MODELS=true                     # Use embedded Ollama models
+LOAD_SAMPLE_DATA=true                     # Load sample data on startup
+MCP_DEBUG=false                           # Enable MCP debug logging
+
+# AI/ML configuration
+EMBEDDING_MODEL=nomic-embed-text          # Ollama embedding model
+EMBEDDING_DIMENSIONS=768                  # Embedding vector dimensions
 ```
-MiniMe-MCP/
-├── PRD.md                    # Complete product requirements
-├── README.md                 # This file
-├── CLAUDE.md                 # Claude Code instructions
-└── build/                    # Docker build context
-    ├── Dockerfile            # Multi-stage optimized build
-    ├── docker-compose.yml     # Development setup
-    ├── Makefile              # Build automation
-    ├── package.json          # Node.js dependencies
-    ├── server.js             # MCP server implementation
-    ├── database/             # Database architecture
-    │   ├── schema.sql        # Complete multi-tenant schema
-    │   ├── init.sql          # Database initialization
-    │   ├── migrations/       # Version-controlled schema changes
-    │   └── README.md         # Database documentation
-    └── docker-entrypoint-postgres-only.sh  # Container startup script
+
+### Docker Build Arguments
+```bash
+# Custom build with arguments
+docker build -f Dockerfile.local-models \
+  --build-arg USER_ID=1001 \
+  --build-arg GROUP_ID=1001 \
+  --build-arg USE_LOCAL_MODELS=true \
+  -t minimemcp:custom .
 ```
 
-## Development Roadmap
+## 📈 Monitoring and Debugging
 
-### ✅ Phase 1: Foundation (Complete)
-- Docker containerization with PostgreSQL + pgvector
-- Ollama integration with deepseek-coder model
-- Basic HTTP server with health endpoints
-- Security hardening with Debian 12 + non-root user
+### Container Health
+```bash
+# Comprehensive health check
+docker exec minimemcp curl http://localhost:8000/health
 
-### ✅ Phase 2: Database Architecture (Complete) 
-- Multi-tenant database schema design
-- Vector embedding storage with pgvector
-- Sequential thinking system with branching
-- Migration system and documentation
+# Service-specific checks
+curl http://localhost:8000/mcp/status      # MCP service status
+curl http://localhost:9000/health          # UI service status
+```
 
-### 🔄 Phase 3: Core API (In Progress)
-- PostgreSQL data access layer
-- Project and session management APIs
-- Memory storage and retrieval endpoints
-- Basic sequential thinking endpoints
+### Log Analysis
+```bash
+# All logs
+docker logs minimemcp
 
-### ⏳ Phase 4: Memory System
-- Vector embedding generation
-- Memory storage with pgvector integration
-- Vector similarity search implementation
-- Memory categorization and tagging
+# Filtered logs
+docker logs minimemcp | grep -E "(ERROR|WARN)"
+docker logs minimemcp | grep "MCP"
 
-### ⏳ Phase 5: Sequential Thinking
-- Thinking sequence management
-- Thought processing with branching
-- Revision and history tracking
-- Visual formatting and display
+# Real-time debugging
+make debug-logs
+```
 
-### ⏳ Phase 6: Integration & Polish
-- LLM service integration
-- Comprehensive error handling
-- Performance optimization
-- Documentation and testing
+### Performance Monitoring
+```bash
+# Container resource usage
+docker stats minimemcp
 
-## Contributing
+# Database performance
+make shell-db
+# Run EXPLAIN ANALYZE on queries
+```
 
-This project follows a phased development approach. See [PRD.md](PRD.md) for complete specifications and contribution guidelines.
+## 🚀 Deployment
 
-## License
+### Production Deployment
+```bash
+# Pull production image
+docker pull manujbawa/minimemcp:latest
+
+# Run with production configuration
+docker run -d \
+  --name minimemcp-prod \
+  -p 8000:8000 \
+  -p 9000:9000 \
+  -v minime-prod-data:/data \
+  -e POSTGRES_PASSWORD=secure_password \
+  -e USE_LOCAL_MODELS=true \
+  -e LOAD_SAMPLE_DATA=false \
+  --restart unless-stopped \
+  manujbawa/minimemcp:latest
+```
+
+### Backup and Recovery
+```bash
+# Backup data volume
+docker run --rm -v minime-data:/data -v $(pwd):/backup alpine \
+  tar czf /backup/minime-backup.tar.gz /data
+
+# Restore data volume
+docker run --rm -v minime-data:/data -v $(pwd):/backup alpine \
+  tar xzf /backup/minime-backup.tar.gz -C /
+```
+
+## 📝 License
 
 MIT License - See LICENSE file for details.
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📞 Support
+
+- **Issues**: [GitHub Issues](https://github.com/your-org/MiniMe-MCP/issues)
+- **Documentation**: [Full Installation Guide](INSTALLATION.md)
+- **Docker Hub**: https://hub.docker.com/r/manujbawa/minimemcp
+- **NPM Package**: https://www.npmjs.com/package/@minimemcp/mcp-client

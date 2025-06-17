@@ -262,10 +262,10 @@ export function AdminData() {
         };
       case 'all':
         return {
-          title: 'Delete ALL Data',
-          description: 'This will permanently delete EVERYTHING: all projects, memories, thinking sequences, patterns, and insights. This action cannot be undone.',
+          title: 'Delete ALL User Data',
+          description: 'This will permanently delete ALL USER DATA: all projects, memories, thinking sequences, patterns, and insights. System configuration (embedding models, etc.) will be preserved to keep MCP functional. This action cannot be undone.',
           severity: 'error' as const,
-          confirmText: 'Delete Everything'
+          confirmText: 'Delete All User Data'
         };
       default:
         return {
@@ -559,13 +559,13 @@ export function AdminData() {
                         disabled={loading}
                         fullWidth
                       >
-                        Delete ALL Data
+                        Delete ALL User Data
                       </Button>
                     </Box>
 
                     <Alert severity="error" sx={{ mt: 2 }}>
                       <Typography variant="caption">
-                        ⚠️ These operations affect all projects and cannot be undone
+                        ⚠️ These operations affect all projects and cannot be undone. System configuration is preserved.
                       </Typography>
                     </Alert>
                   </CardContent>
@@ -713,13 +713,21 @@ export function AdminData() {
           </Grid>
           <Grid item xs={12} md={6}>
             <Typography variant="subtitle2" color="secondary.main" gutterBottom>
+              What Gets Preserved:
+            </Typography>
+            <Typography variant="body2" color="text.secondary" component="ul" sx={{ pl: 2 }}>
+              <li>System configuration (embedding models)</li>
+              <li>MCP server functionality</li>
+              <li>Database schema and structure</li>
+              <li>Essential reference data</li>
+            </Typography>
+            <Typography variant="subtitle2" color="info.main" gutterBottom sx={{ mt: 2 }}>
               Recovery Options:
             </Typography>
             <Typography variant="body2" color="text.secondary" component="ul" sx={{ pl: 2 }}>
               <li>Database backups (if available)</li>
               <li>Export files from previous sessions</li>
               <li>Project-specific backups</li>
-              <li>Contact administrator for assistance</li>
             </Typography>
           </Grid>
         </Grid>

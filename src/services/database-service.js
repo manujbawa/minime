@@ -1046,7 +1046,7 @@ export class DatabaseService {
                 client.query('SELECT COUNT(*) FROM meta_insights')
             ]);
 
-            // Delete ALL data in correct order
+            // Delete ALL user data in correct order (preserve system reference data)
             await client.query('DELETE FROM thoughts');
             await client.query('DELETE FROM thinking_sequences');
             await client.query('DELETE FROM memories');
@@ -1054,6 +1054,8 @@ export class DatabaseService {
             await client.query('DELETE FROM projects');
             await client.query('DELETE FROM coding_patterns');
             await client.query('DELETE FROM meta_insights');
+            
+            // NOTE: embedding_models table is preserved as it contains essential system configuration
 
             await client.query('COMMIT');
 

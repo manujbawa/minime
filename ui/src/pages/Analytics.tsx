@@ -70,6 +70,31 @@ import type { Project, Analytics as AnalyticsType } from '../types';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#EC4899', '#6366F1'];
 
+// Empty state component for charts
+function ChartEmptyState({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) {
+  return (
+    <Box sx={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      alignItems: 'center', 
+      justifyContent: 'center', 
+      height: '100%',
+      color: 'text.secondary',
+      p: 3
+    }}>
+      <Box sx={{ fontSize: 48, mb: 2, opacity: 0.5 }}>
+        {icon}
+      </Box>
+      <Typography variant="body1" gutterBottom>
+        {title}
+      </Typography>
+      <Typography variant="body2" color="text.secondary" textAlign="center">
+        {description}
+      </Typography>
+    </Box>
+  );
+}
+
 interface TabPanelProps {
   children?: React.ReactNode;
   index: number;
@@ -153,39 +178,37 @@ export function Analytics() {
     if (!analytics) return [];
     const totalMemories = parseInt(analytics.database.memories.total_memories);
     const totalSequences = analytics.thinking.total_sequences;
-    const dataPoints = [];
-    const now = new Date();
     
-    for (let i = 29; i >= 0; i--) {
-      const date = new Date(now);
-      date.setDate(date.getDate() - i);
-      const progress = (30 - i) / 30;
-      
-      dataPoints.push({
-        date: date.toISOString().split('T')[0],
-        memories: Math.floor(totalMemories * progress * (0.7 + Math.random() * 0.3)),
-        sequences: Math.floor(totalSequences * progress * (0.6 + Math.random() * 0.4)),
-        confidence: 0.3 + progress * 0.5 + Math.random() * 0.2,
-        productivity: Math.floor(50 + progress * 40 + Math.random() * 20),
-      });
+    // Return empty array if no data - don't generate fake time series
+    if (totalMemories === 0 && totalSequences === 0) {
+      return [];
     }
-    return dataPoints;
+    
+    // Show current state only - no historical fake data
+    const now = new Date();
+    return [{
+      date: now.toISOString().split('T')[0],
+      memories: totalMemories,
+      sequences: totalSequences,
+      confidence: analytics.thinking.avg_confidence || 0,
+      productivity: Math.min(100, totalMemories * 2 + totalSequences * 5),
+    }];
   };
 
   const generateMemoryTypeDistribution = () => {
     if (!analytics) return [];
     const totalMemories = parseInt(analytics.database.memories.total_memories);
-    const uniqueTypes = parseInt(analytics.database.memories.unique_memory_types);
     
-    const memoryTypes = [
-      { name: 'Code Solutions', value: Math.floor(totalMemories * 0.3), icon: <Code />, color: COLORS[0] },
-      { name: 'Insights', value: Math.floor(totalMemories * 0.25), icon: <Lightbulb />, color: COLORS[1] },
-      { name: 'Decisions', value: Math.floor(totalMemories * 0.2), icon: <Business />, color: COLORS[2] },
-      { name: 'Bug Fixes', value: Math.floor(totalMemories * 0.15), icon: <BugReport />, color: COLORS[3] },
-      { name: 'Learnings', value: Math.floor(totalMemories * 0.1), icon: <Assessment />, color: COLORS[4] },
-    ].slice(0, Math.min(5, uniqueTypes));
-
-    return memoryTypes;
+    // Return empty array if no memories
+    if (totalMemories === 0) {
+      return [];
+    }
+    
+    // TODO: Get actual memory type breakdown from backend
+    // For now, just show total count without fake distribution
+    return [
+      { name: 'All Memories', value: totalMemories, icon: <Assessment />, color: COLORS[0] },
+    ];
   };
 
   const generateThinkingAnalytics = () => {
@@ -226,12 +249,14 @@ export function Analytics() {
   };
 
   const generateProjectHealthMatrix = () => {
-    return projects.map(project => ({
+    // Only show projects that have actual data
+    return projects.filter(project => 
+      parseInt(project.memory_count || '0') > 0 || parseInt(project.thinking_sequence_count || '0') > 0
+    ).map(project => ({
       name: project.name.substring(0, 10),
       memories: parseInt(project.memory_count || '0'),
       sequences: parseInt(project.thinking_sequence_count || '0'),
       health: Math.min(100, parseInt(project.memory_count || '0') * 2 + parseInt(project.thinking_sequence_count || '0') * 5),
-      activity: Math.floor(Math.random() * 100), // This would be calculated from actual activity data
     }));
   };
 
@@ -239,12 +264,15 @@ export function Analytics() {
     if (!analytics) return [];
     const total = parseInt(analytics.database.memories.total_memories);
     
+    // Return empty array if no memories
+    if (total === 0) {
+      return [];
+    }
+    
+    // TODO: Get actual knowledge funnel data from backend
+    // For now, just show total without fake distribution
     return [
       { value: total, name: 'Total Memories', fill: COLORS[0] },
-      { value: Math.floor(total * 0.8), name: 'With Context', fill: COLORS[1] },
-      { value: Math.floor(total * 0.6), name: 'High Importance', fill: COLORS[2] },
-      { value: Math.floor(total * 0.4), name: 'Frequently Accessed', fill: COLORS[3] },
-      { value: Math.floor(total * 0.2), name: 'Core Knowledge', fill: COLORS[4] },
     ];
   };
 
@@ -471,18 +499,26 @@ export function Analytics() {
                     Knowledge Evolution Over Time
                   </Typography>
                   <Box sx={{ height: 400 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <ComposedChart data={timeSeriesData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" />
-                        <YAxis yAxisId="left" />
-                        <YAxis yAxisId="right" orientation="right" />
-                        <Tooltip />
-                        <Area yAxisId="left" type="monotone" dataKey="memories" stackId="1" stroke={COLORS[0]} fill={COLORS[0]} fillOpacity={0.6} />
-                        <Area yAxisId="left" type="monotone" dataKey="sequences" stackId="1" stroke={COLORS[1]} fill={COLORS[1]} fillOpacity={0.6} />
-                        <Line yAxisId="right" type="monotone" dataKey="confidence" stroke={COLORS[2]} strokeWidth={3} />
-                      </ComposedChart>
-                    </ResponsiveContainer>
+                    {timeSeriesData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <ComposedChart data={timeSeriesData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="date" />
+                          <YAxis yAxisId="left" />
+                          <YAxis yAxisId="right" orientation="right" />
+                          <Tooltip />
+                          <Area yAxisId="left" type="monotone" dataKey="memories" stackId="1" stroke={COLORS[0]} fill={COLORS[0]} fillOpacity={0.6} />
+                          <Area yAxisId="left" type="monotone" dataKey="sequences" stackId="1" stroke={COLORS[1]} fill={COLORS[1]} fillOpacity={0.6} />
+                          <Line yAxisId="right" type="monotone" dataKey="confidence" stroke={COLORS[2]} strokeWidth={3} />
+                        </ComposedChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <ChartEmptyState 
+                        icon={<Timeline />}
+                        title="No historical data yet"
+                        description="Start storing memories and creating thinking sequences to see knowledge evolution over time"
+                      />
+                    )}
                   </Box>
                 </CardContent>
               </Card>
@@ -501,7 +537,7 @@ export function Analytics() {
                       </ListItemIcon>
                       <ListItemText
                         primary="Memory Growth Rate"
-                        secondary={`+${Math.round(Math.random() * 15 + 5)}% this period`}
+                        secondary={parseInt(analytics?.database.memories.total_memories || '0') > 0 ? "Growing steadily" : "No data yet"}
                       />
                     </ListItem>
                     <ListItem>
@@ -539,25 +575,33 @@ export function Analytics() {
                     Memory Type Distribution
                   </Typography>
                   <Box sx={{ height: 300 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RechartsPieChart>
-                        <Pie
-                          data={memoryTypeData}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                        >
-                          {memoryTypeData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                      </RechartsPieChart>
-                    </ResponsiveContainer>
+                    {memoryTypeData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RechartsPieChart>
+                          <Pie
+                            data={memoryTypeData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                            outerRadius={80}
+                            fill="#8884d8"
+                            dataKey="value"
+                          >
+                            {memoryTypeData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                        </RechartsPieChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <ChartEmptyState 
+                        icon={<PieChart />}
+                        title="No memory types to analyze"
+                        description="Store memories with different types to see distribution patterns"
+                      />
+                    )}
                   </Box>
                 </CardContent>
               </Card>
@@ -570,19 +614,27 @@ export function Analytics() {
                     Knowledge Funnel
                   </Typography>
                   <Box sx={{ height: 300 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart layout="horizontal" data={knowledgeFunnelData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis type="number" />
-                        <YAxis dataKey="name" type="category" width={120} />
-                        <Tooltip />
-                        <Bar dataKey="value" fill="#8884d8">
-                          {knowledgeFunnelData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.fill} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
+                    {knowledgeFunnelData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart layout="horizontal" data={knowledgeFunnelData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis type="number" />
+                          <YAxis dataKey="name" type="category" width={120} />
+                          <Tooltip />
+                          <Bar dataKey="value" fill="#8884d8">
+                            {knowledgeFunnelData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.fill} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <ChartEmptyState 
+                        icon={<BarChartIcon />}
+                        title="No knowledge to analyze"
+                        description="Store memories to see knowledge funnel analysis"
+                      />
+                    )}
                   </Box>
                 </CardContent>
               </Card>
@@ -600,19 +652,27 @@ export function Analytics() {
                     Project Health Matrix
                   </Typography>
                   <Box sx={{ height: 300 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <ScatterChart>
-                        <CartesianGrid />
-                        <XAxis dataKey="memories" name="memories" />
-                        <YAxis dataKey="sequences" name="sequences" />
-                        <Tooltip cursor={{ strokeDasharray: '3 3' }} />
-                        <Scatter
-                          name="Projects"
-                          data={projectHealthData}
-                          fill="#8884d8"
-                        />
-                      </ScatterChart>
-                    </ResponsiveContainer>
+                    {projectHealthData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <ScatterChart>
+                          <CartesianGrid />
+                          <XAxis dataKey="memories" name="memories" />
+                          <YAxis dataKey="sequences" name="sequences" />
+                          <Tooltip cursor={{ strokeDasharray: '3 3' }} />
+                          <Scatter
+                            name="Projects"
+                            data={projectHealthData}
+                            fill="#8884d8"
+                          />
+                        </ScatterChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <ChartEmptyState 
+                        icon={<Assessment />}
+                        title="No project data to analyze"
+                        description="Projects with memories and sequences will appear here"
+                      />
+                    )}
                   </Box>
                 </CardContent>
               </Card>
@@ -625,17 +685,25 @@ export function Analytics() {
                     Project Activity Comparison
                   </Typography>
                   <Box sx={{ height: 300 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={projectActivityData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip />
-                        <Bar dataKey="memories" fill={COLORS[0]} name="Memories" />
-                        <Bar dataKey="sequences" fill={COLORS[1]} name="Sequences" />
-                        <Bar dataKey="sessions" fill={COLORS[2]} name="Sessions" />
-                      </BarChart>
-                    </ResponsiveContainer>
+                    {projectActivityData.some(p => p.memories > 0 || p.sequences > 0 || p.sessions > 0) ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={projectActivityData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="name" />
+                          <YAxis />
+                          <Tooltip />
+                          <Bar dataKey="memories" fill={COLORS[0]} name="Memories" />
+                          <Bar dataKey="sequences" fill={COLORS[1]} name="Sequences" />
+                          <Bar dataKey="sessions" fill={COLORS[2]} name="Sessions" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <ChartEmptyState 
+                        icon={<Business />}
+                        title="No project activity to compare"
+                        description="Create projects and add data to see activity comparison"
+                      />
+                    )}
                   </Box>
                 </CardContent>
               </Card>
@@ -653,29 +721,37 @@ export function Analytics() {
                     Thinking Quality Radar
                   </Typography>
                   <Box sx={{ height: 300 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RadarChart data={thinkingRadarData}>
-                        <PolarGrid />
-                        <PolarAngleAxis dataKey="subject" />
-                        <PolarRadiusAxis angle={30} domain={[0, 100]} />
-                        <Radar
-                          name="Current"
-                          dataKey="current"
-                          stroke={COLORS[0]}
-                          fill={COLORS[0]}
-                          fillOpacity={0.6}
-                        />
-                        <Radar
-                          name="Target"
-                          dataKey="target"
-                          stroke={COLORS[1]}
-                          fill={COLORS[1]}
-                          fillOpacity={0.3}
-                          strokeDasharray="5 5"
-                        />
-                        <Tooltip />
-                      </RadarChart>
-                    </ResponsiveContainer>
+                    {analytics?.thinking?.total_sequences > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RadarChart data={thinkingRadarData}>
+                          <PolarGrid />
+                          <PolarAngleAxis dataKey="subject" />
+                          <PolarRadiusAxis angle={30} domain={[0, 100]} />
+                          <Radar
+                            name="Current"
+                            dataKey="current"
+                            stroke={COLORS[0]}
+                            fill={COLORS[0]}
+                            fillOpacity={0.6}
+                          />
+                          <Radar
+                            name="Target"
+                            dataKey="target"
+                            stroke={COLORS[1]}
+                            fill={COLORS[1]}
+                            fillOpacity={0.3}
+                            strokeDasharray="5 5"
+                          />
+                          <Tooltip />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <ChartEmptyState 
+                        icon={<Brain />}
+                        title="No thinking data to analyze"
+                        description="Create thinking sequences to see quality analysis"
+                      />
+                    )}
                   </Box>
                 </CardContent>
               </Card>
@@ -751,8 +827,9 @@ export function Analytics() {
                   📈 Growth Pattern
                 </Typography>
                 <Typography variant="body2" color="primary.dark">
-                  Your knowledge base is growing at {Math.round(Math.random() * 20 + 10)}% per week, 
-                  with particularly strong development in code solutions and decision-making processes.
+                  {parseInt(analytics?.database.memories.total_memories || '0') > 0 
+                    ? `Your knowledge base contains ${analytics?.database.memories.total_memories} memories with strong patterns in your development approach.`
+                    : 'Start storing memories to see growth pattern analysis here.'}
                 </Typography>
               </Paper>
             </Grid>
@@ -773,8 +850,9 @@ export function Analytics() {
                   💡 Learning Recommendation
                 </Typography>
                 <Typography variant="body2" color="warning.dark">
-                  Your most productive sessions occur when combining code memories with structured thinking. 
-                  Try linking more memories to active thinking sequences.
+                  {analytics?.thinking?.total_sequences > 0 
+                    ? 'Your most productive sessions occur when combining code memories with structured thinking. Try linking more memories to active thinking sequences.'
+                    : 'Create thinking sequences alongside memories to see learning recommendations here.'}
                 </Typography>
               </Paper>
             </Grid>

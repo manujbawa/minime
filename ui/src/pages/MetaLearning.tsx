@@ -108,102 +108,31 @@ export function MetaLearning() {
       setLoading(true);
       setError(null);
       
-      // For now, we'll create mock data since the API endpoints might not be fully implemented
-      // In a real implementation, these would call specific learning endpoints
+      // TODO: Implement actual API endpoints for meta-learning data
+      // For now, we'll use empty arrays to show the system is ready but has no data yet
       
-      // Mock insights data
-      const mockInsights: LearningInsight[] = [
-        {
-          id: '1',
-          type: 'pattern_insight',
-          category: 'code_quality',
-          title: 'Error Handling Pattern Identified',
-          description: 'You consistently use try-catch blocks with specific error types, leading to 25% fewer production bugs.',
-          confidence: 0.89,
-          actionable: true,
-          created_at: new Date().toISOString(),
-          metadata: { pattern_count: 15, success_rate: 0.92 }
-        },
-        {
-          id: '2',
-          type: 'tech_preference',
-          category: 'architecture',
-          title: 'Microservices Architecture Preference',
-          description: 'Your recent projects favor microservices architecture with async communication patterns.',
-          confidence: 0.76,
-          actionable: false,
-          created_at: new Date(Date.now() - 86400000).toISOString(),
-          metadata: { project_count: 8, avg_service_count: 12 }
-        },
-        {
-          id: '3',
-          type: 'improvement_suggestion',
-          category: 'testing',
-          title: 'Unit Test Coverage Improvement',
-          description: 'Consider adding more unit tests for edge cases. Current coverage could be improved in data validation logic.',
-          confidence: 0.68,
-          actionable: true,
-          created_at: new Date(Date.now() - 172800000).toISOString(),
-          metadata: { current_coverage: 0.72, suggested_coverage: 0.85 }
-        }
-      ];
-
-      // Mock patterns data
-      const mockPatterns: CodingPattern[] = [
-        {
-          id: '1',
-          pattern_category: 'architectural',
-          pattern_type: 'service_layer',
-          pattern_name: 'Repository Pattern',
-          pattern_signature: 'class.*Repository.*interface',
-          description: 'Data access abstraction using repository pattern',
-          frequency_count: 23,
-          confidence_score: 0.94,
-          success_rate: 0.87,
-          created_at: new Date().toISOString(),
-          examples: ['UserRepository', 'ProductRepository', 'OrderRepository']
-        },
-        {
-          id: '2',
-          pattern_category: 'error_handling',
-          pattern_type: 'exception_handling',
-          pattern_name: 'Specific Exception Handling',
-          pattern_signature: 'try.*catch.*SpecificException',
-          description: 'Using specific exception types instead of generic Exception',
-          frequency_count: 31,
-          confidence_score: 0.91,
-          success_rate: 0.92,
-          created_at: new Date(Date.now() - 86400000).toISOString(),
-          examples: ['ValidationException', 'DatabaseException', 'NetworkException']
-        },
-        {
-          id: '3',
-          pattern_category: 'performance',
-          pattern_type: 'async_pattern',
-          pattern_name: 'Async/Await Pattern',
-          pattern_signature: 'async.*await.*Promise',
-          description: 'Asynchronous programming using async/await',
-          frequency_count: 45,
-          confidence_score: 0.88,
-          success_rate: 0.89,
-          created_at: new Date(Date.now() - 172800000).toISOString(),
-          examples: ['async getData()', 'await apiCall()', 'Promise.all()']
-        }
-      ];
-
-      // Mock status data
-      const mockStatus: LearningStatus = {
-        queue_size: 3,
-        total_patterns: 47,
-        total_insights: 12,
-        last_processing: new Date(Date.now() - 300000).toISOString(), // 5 minutes ago
-        processing_rate: 0.85,
+      // In a real implementation, these would call:
+      // const insightsResponse = await miniMeAPI.getLearningInsights();
+      // const patternsResponse = await miniMeAPI.getCodingPatterns();
+      // const statusResponse = await miniMeAPI.getLearningStatus();
+      
+      // Empty data arrays - system is ready but no learning data yet
+      const emptyInsights: LearningInsight[] = [];
+      const emptyPatterns: CodingPattern[] = [];
+      
+      // Basic status showing system is ready
+      const basicStatus: LearningStatus = {
+        queue_size: 0,
+        total_patterns: 0,
+        total_insights: 0,
+        last_processing: new Date().toISOString(),
+        processing_rate: 1.0, // System is healthy, just no data to process yet
         system_health: 'healthy'
       };
 
-      setInsights(mockInsights);
-      setPatterns(mockPatterns);
-      setStatus(mockStatus);
+      setInsights(emptyInsights);
+      setPatterns(emptyPatterns);
+      setStatus(basicStatus);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch learning data');
     } finally {
@@ -434,7 +363,18 @@ export function MetaLearning() {
         
         {insights.length === 0 && (
           <Alert severity="info">
-            No insights available yet. Start storing memories and the system will begin detecting patterns automatically.
+            <Typography variant="subtitle2" gutterBottom>
+              No learning insights yet
+            </Typography>
+            <Typography variant="body2">
+              The meta-learning system will automatically generate insights as you:
+            </Typography>
+            <Typography variant="body2" component="ul" sx={{ mt: 1, pl: 2 }}>
+              <li>Store code memories with patterns</li>
+              <li>Complete thinking sequences</li>
+              <li>Work across multiple projects</li>
+              <li>Build up a knowledge base over time</li>
+            </Typography>
           </Alert>
         )}
       </TabPanel>
@@ -522,7 +462,18 @@ export function MetaLearning() {
         
         {patterns.length === 0 && (
           <Alert severity="info">
-            No patterns detected yet. The system will automatically identify coding patterns as you store more code memories.
+            <Typography variant="subtitle2" gutterBottom>
+              No coding patterns detected yet
+            </Typography>
+            <Typography variant="body2">
+              The pattern detection system will automatically identify patterns as you:
+            </Typography>
+            <Typography variant="body2" component="ul" sx={{ mt: 1, pl: 2 }}>
+              <li>Store code-related memories</li>
+              <li>Use consistent coding approaches</li>
+              <li>Repeat similar solutions across projects</li>
+              <li>Document architectural decisions</li>
+            </Typography>
           </Alert>
         )}
       </TabPanel>
