@@ -9,7 +9,6 @@ import {
   Grid,
   Chip,
   Avatar,
-  IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -18,14 +17,15 @@ import {
   Alert,
   Paper,
   Divider,
+  TextField,
+  InputAdornment,
 } from '@mui/material';
 import {
   Add as AddIcon,
   FolderOpen as FolderOpenIcon,
-  Settings as SettingsIcon,
   BarChart as BarChartIcon,
-  CalendarToday as CalendarIcon,
   TrendingUp as ActivityIcon,
+  Search as SearchIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { miniMeAPI } from '../services/api';
@@ -34,13 +34,30 @@ import type { Project } from '../types';
 const ProjectsMUI = () => {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
+  const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     loadProjects();
   }, []);
+
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredProjects(projects);
+    } else {
+      const filtered = projects.filter(project => 
+        project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (project.description && project.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (project.settings?.tech_stack?.some((tech: string) => 
+          tech.toLowerCase().includes(searchQuery.toLowerCase())
+        ))
+      );
+      setFilteredProjects(filtered);
+    }
+  }, [projects, searchQuery]);
 
   const loadProjects = async () => {
     try {
@@ -86,23 +103,41 @@ const ProjectsMUI = () => {
   return (
     <Box sx={{ p: 4 }}>
       {/* Header */}
-      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <Box>
-          <Typography variant="h2" component="h1" gutterBottom fontWeight="bold">
-            Projects
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Manage your development projects and their memories
-          </Typography>
+      <Box sx={{ mb: 4 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
+          <Box>
+            <Typography variant="h2" component="h1" gutterBottom fontWeight="bold">
+              Projects
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Manage your development projects and their memories
+            </Typography>
+          </Box>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setShowCreateModal(true)}
+            sx={{ borderRadius: 2 }}
+          >
+            New Project
+          </Button>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setShowCreateModal(true)}
-          sx={{ borderRadius: 2 }}
-        >
-          New Project
-        </Button>
+        
+        {/* Search Field */}
+        <TextField
+          fullWidth
+          placeholder="Search projects by name, description, or technology..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+          }}
+          sx={{ maxWidth: 600 }}
+        />
       </Box>
 
       {/* Error Message */}
@@ -112,10 +147,10 @@ const ProjectsMUI = () => {
         </Alert>
       )}
 
-      {/* Projects Grid */}
+      {/* Projects Grid - Three Column Layout */}
       <Grid container spacing={3}>
-        {projects.map((project) => (
-          <Grid item xs={12} md={6} lg={4} key={project.id}>
+        {filteredProjects.map((project) => (
+          <Grid size={{ xs: 12, sm: 6, lg: 4 }} key={project.id}>
             <Card
               sx={{
                 height: '100%',
@@ -126,27 +161,23 @@ const ProjectsMUI = () => {
                   transform: 'translateY(-2px)',
                   boxShadow: 3,
                 },
+                minHeight: 320, // Reduced height for more compact cards
               }}
             >
               <CardContent sx={{ flexGrow: 1, pb: 1 }}>
                 {/* Project Header */}
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1, minWidth: 0 }}>
-                    <Avatar sx={{ bgcolor: 'primary.main', mr: 2 }}>
-                      <FolderOpenIcon />
-                    </Avatar>
-                    <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-                      <Typography variant="h6" component="h3" noWrap fontWeight="600">
-                        {project.name}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Created {formatDate(project.created_at)}
-                      </Typography>
-                    </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                  <Avatar sx={{ bgcolor: 'primary.main', mr: 2 }}>
+                    <FolderOpenIcon />
+                  </Avatar>
+                  <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+                    <Typography variant="h6" component="h3" noWrap fontWeight="600">
+                      {project.name}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Created {formatDate(project.created_at)}
+                    </Typography>
                   </Box>
-                  <IconButton size="small" color="default">
-                    <SettingsIcon fontSize="small" />
-                  </IconButton>
                 </Box>
 
                 {/* Description */}
@@ -191,7 +222,7 @@ const ProjectsMUI = () => {
                 {/* Statistics */}
                 <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
                   <Grid container spacing={2}>
-                    <Grid item xs={4}>
+                    <Grid size={{ xs: 4 }}>
                       <Box sx={{ textAlign: 'center' }}>
                         <Typography variant="h6" fontWeight="bold">
                           {project.memory_count || 0}
@@ -201,7 +232,7 @@ const ProjectsMUI = () => {
                         </Typography>
                       </Box>
                     </Grid>
-                    <Grid item xs={4}>
+                    <Grid size={{ xs: 4 }}>
                       <Box sx={{ textAlign: 'center' }}>
                         <Typography variant="h6" fontWeight="bold">
                           {project.session_count || 0}
@@ -211,7 +242,7 @@ const ProjectsMUI = () => {
                         </Typography>
                       </Box>
                     </Grid>
-                    <Grid item xs={4}>
+                    <Grid size={{ xs: 4 }}>
                       <Box sx={{ textAlign: 'center' }}>
                         <Typography variant="h6" fontWeight="bold">
                           {project.thinking_sequence_count || 0}
@@ -245,21 +276,15 @@ const ProjectsMUI = () => {
               <Divider />
 
               {/* Actions */}
-              <CardActions sx={{ justifyContent: 'space-between', px: 2, py: 1.5 }}>
+              <CardActions sx={{ justifyContent: 'center', px: 2, py: 1.5 }}>
                 <Button
                   size="small"
                   startIcon={<BarChartIcon />}
                   color="primary"
                   onClick={() => navigate(`/projects/${encodeURIComponent(project.name)}`)}
+                  fullWidth
                 >
                   View Details
-                </Button>
-                <Button
-                  size="small"
-                  startIcon={<CalendarIcon />}
-                  color="inherit"
-                >
-                  Timeline
                 </Button>
               </CardActions>
             </Card>
@@ -268,23 +293,43 @@ const ProjectsMUI = () => {
       </Grid>
 
       {/* Empty State */}
-      {projects.length === 0 && !loading && (
-        <Paper sx={{ p: 6, textAlign: 'center', mt: 4 }}>
-          <FolderOpenIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
-          <Typography variant="h5" gutterBottom fontWeight="500">
-            No projects yet
-          </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-            Get started by creating your first project
-          </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => setShowCreateModal(true)}
-          >
-            Create Project
-          </Button>
-        </Paper>
+      {!loading && (
+        <>
+          {projects.length === 0 ? (
+            <Paper sx={{ p: 6, textAlign: 'center', mt: 4 }}>
+              <FolderOpenIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
+              <Typography variant="h5" gutterBottom fontWeight="500">
+                No projects yet
+              </Typography>
+              <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                Get started by creating your first project
+              </Typography>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => setShowCreateModal(true)}
+              >
+                Create Project
+              </Button>
+            </Paper>
+          ) : filteredProjects.length === 0 && searchQuery.trim() ? (
+            <Paper sx={{ p: 6, textAlign: 'center', mt: 4 }}>
+              <SearchIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
+              <Typography variant="h5" gutterBottom fontWeight="500">
+                No projects found
+              </Typography>
+              <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                No projects match your search criteria &ldquo;{searchQuery}&rdquo;
+              </Typography>
+              <Button
+                variant="outlined"
+                onClick={() => setSearchQuery('')}
+              >
+                Clear Search
+              </Button>
+            </Paper>
+          ) : null}
+        </>
       )}
 
       {/* Create Project Modal */}

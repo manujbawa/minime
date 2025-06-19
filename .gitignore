@@ -34,6 +34,10 @@ dist/
 build/
 local_build_scripts/
 
+# Vendored dependencies (large binaries)
+build/vendor/
+build/local-ollama-models/
+
 # Memory files
 # Ignore all files and folders starting with a dot
 .*

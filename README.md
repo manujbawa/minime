@@ -572,9 +572,12 @@ memories (id, project_id, session_id, content, memory_type, embedding, metadata)
 thinking_sequences (id, project_id, session_id, sequence_name, description, is_complete)
 thoughts (id, sequence_id, thought_number, content, confidence, metadata)
 
--- Progress and task tracking
+-- Progress tracking  
 progress_entries (id, project_id, progress_description, version, completion_percentage)
-tasks (id, project_id, description, status, priority, estimated_hours)
+
+-- Task tracking through memories system (consolidated)
+-- Tasks are stored as memory_type = 'task' with rich metadata:
+-- metadata: {title, task_type, status, priority, completed_at, ...}
 
 -- Learning and pattern detection
 learning_insights (id, insight_type, pattern_data, confidence_score, projects_analyzed)

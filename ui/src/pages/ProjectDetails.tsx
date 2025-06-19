@@ -33,6 +33,7 @@ import {
   Switch,
   FormControlLabel,
 } from '@mui/material';
+import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
 import {
   ArrowBack as ArrowBackIcon,
   FolderOpen as FolderOpenIcon,
@@ -699,6 +700,112 @@ const ProjectDetails = () => {
     });
   };
 
+  const getProgressColumns = (): GridColDef[] => [
+    {
+      field: 'version',
+      headerName: 'Version',
+      width: 100,
+      renderCell: (params: GridRenderCellParams) => (
+        <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32, fontSize: '0.8rem' }}>
+          {params.value}
+        </Avatar>
+      ),
+    },
+    {
+      field: 'description',
+      headerName: 'Description',
+      flex: 1,
+      minWidth: 200,
+      renderCell: (params: GridRenderCellParams) => (
+        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+          {params.value}
+        </Typography>
+      ),
+    },
+    {
+      field: 'milestoneType',
+      headerName: 'Type',
+      width: 120,
+      renderCell: (params: GridRenderCellParams) => (
+        <Chip
+          label={params.value}
+          size="small"
+          color="primary"
+          variant="outlined"
+        />
+      ),
+    },
+    {
+      field: 'completionPercentage',
+      headerName: 'Progress',
+      width: 150,
+      renderCell: (params: GridRenderCellParams) => (
+        <Box sx={{ width: '100%' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <LinearProgress
+              variant="determinate"
+              value={params.value || 0}
+              sx={{ flex: 1, height: 8, borderRadius: 4 }}
+            />
+            <Typography variant="caption" sx={{ minWidth: 35 }}>
+              {params.value || 0}%
+            </Typography>
+          </Box>
+        </Box>
+      ),
+    },
+    {
+      field: 'blockers',
+      headerName: 'Blockers',
+      width: 100,
+      renderCell: (params: GridRenderCellParams) => {
+        const blockers = params.value as string[];
+        return blockers.length > 0 ? (
+          <Chip
+            label={blockers.length}
+            size="small"
+            color="error"
+            variant="outlined"
+          />
+        ) : (
+          <Typography variant="caption" color="text.disabled">
+            None
+          </Typography>
+        );
+      },
+    },
+    {
+      field: 'nextSteps',
+      headerName: 'Next Steps',
+      width: 120,
+      renderCell: (params: GridRenderCellParams) => {
+        const steps = params.value as string[];
+        return steps.length > 0 ? (
+          <Chip
+            label={steps.length}
+            size="small"
+            color="info"
+            variant="outlined"
+          />
+        ) : (
+          <Typography variant="caption" color="text.disabled">
+            None
+          </Typography>
+        );
+      },
+    },
+    {
+      field: 'createdAt',
+      headerName: 'Created',
+      width: 150,
+      renderCell: (params: GridRenderCellParams) => (
+        <Typography variant="caption">
+          {formatDate(params.value)}
+        </Typography>
+      ),
+    },
+  ];
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
@@ -743,7 +850,7 @@ const ProjectDetails = () => {
 
         {/* Quick Stats */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={6} sm={3}>
+          <Grid size={{ xs: 6, sm: 3 }}>
             <Paper sx={{ p: 2, textAlign: 'center' }}>
               <Typography variant="h4" fontWeight="bold" color="primary">
                 {memories.length}
@@ -753,7 +860,7 @@ const ProjectDetails = () => {
               </Typography>
             </Paper>
           </Grid>
-          <Grid item xs={6} sm={3}>
+          <Grid size={{ xs: 6, sm: 3 }}>
             <Paper sx={{ p: 2, textAlign: 'center' }}>
               <Typography variant="h4" fontWeight="bold" color="success.main">
                 {tasks.filter(t => t.status === 'completed').length}
@@ -763,7 +870,7 @@ const ProjectDetails = () => {
               </Typography>
             </Paper>
           </Grid>
-          <Grid item xs={6} sm={3}>
+          <Grid size={{ xs: 6, sm: 3 }}>
             <Paper sx={{ p: 2, textAlign: 'center' }}>
               <Typography variant="h4" fontWeight="bold" color="warning.main">
                 {progress.length}
@@ -773,7 +880,7 @@ const ProjectDetails = () => {
               </Typography>
             </Paper>
           </Grid>
-          <Grid item xs={6} sm={3}>
+          <Grid size={{ xs: 6, sm: 3 }}>
             <Paper sx={{ p: 2, textAlign: 'center' }}>
               <Typography variant="h4" fontWeight="bold" color="info.main">
                 {thinking.length}
@@ -1043,80 +1150,53 @@ const ProjectDetails = () => {
               </Button>
             </Paper>
           ) : (
-            <List>
-              {progress.map((entry) => (
-                <React.Fragment key={entry.id}>
-                  <ListItem alignItems="flex-start">
-                    <ListItemIcon>
-                      <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32, fontSize: '0.8rem' }}>
-                        {entry.version}
-                      </Avatar>
-                    </ListItemIcon>
-                    <ListItemText
-                      primary={
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Typography variant="subtitle1" fontWeight="bold">
-                            {entry.progress_description}
-                          </Typography>
-                          <Chip
-                            label={entry.milestone_type}
-                            size="small"
-                            color="primary"
-                            variant="outlined"
-                          />
-                          {entry.completion_percentage && (
-                            <Chip
-                              label={`${entry.completion_percentage}%`}
-                              size="small"
-                              color="success"
-                            />
-                          )}
-                        </Box>
-                      }
-                      secondary={
-                        <Box sx={{ mt: 1 }}>
-                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                            {formatDate(entry.created_at)}
-                          </Typography>
-                          {entry.completion_percentage && (
-                            <LinearProgress
-                              variant="determinate"
-                              value={entry.completion_percentage}
-                              sx={{ mb: 1, width: 200 }}
-                            />
-                          )}
-                          {entry.blockers && entry.blockers.length > 0 && (
-                            <Box sx={{ mb: 1 }}>
-                              <Typography variant="caption" color="error.main" fontWeight="bold">
-                                Blockers:
-                              </Typography>
-                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
-                                {entry.blockers.map((blocker, index) => (
-                                  <Chip key={index} label={blocker} size="small" color="error" variant="outlined" />
-                                ))}
-                              </Box>
-                            </Box>
-                          )}
-                          {entry.next_steps && entry.next_steps.length > 0 && (
-                            <Box>
-                              <Typography variant="caption" color="primary.main" fontWeight="bold">
-                                Next Steps:
-                              </Typography>
-                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
-                                {entry.next_steps.map((step, index) => (
-                                  <Chip key={index} label={step} size="small" color="primary" variant="outlined" />
-                                ))}
-                              </Box>
-                            </Box>
-                          )}
-                        </Box>
-                      }
-                    />
-                  </ListItem>
-                  <Divider />
-                </React.Fragment>
-              ))}
-            </List>
+            <Paper sx={{ height: 600, width: '100%' }}>
+              <DataGrid
+                rows={progress.map((entry) => ({
+                  id: entry.id,
+                  version: entry.version,
+                  description: entry.progress_description,
+                  milestoneType: entry.milestone_type,
+                  completionPercentage: entry.completion_percentage || 0,
+                  blockers: entry.blockers || [],
+                  nextSteps: entry.next_steps || [],
+                  tags: entry.tags || [],
+                  createdAt: entry.created_at,
+                  updatedAt: entry.updated_at
+                }))}
+                columns={getProgressColumns()}
+                initialState={{
+                  pagination: {
+                    paginationModel: { page: 0, pageSize: 10 },
+                  },
+                  sorting: {
+                    sortModel: [{ field: 'createdAt', sort: 'desc' }],
+                  },
+                }}
+                pageSizeOptions={[10, 25, 50]}
+                disableRowSelectionOnClick
+                sx={{
+                  '& .MuiDataGrid-cell': {
+                    borderColor: 'divider',
+                  },
+                  '& .MuiDataGrid-columnHeaders': {
+                    backgroundColor: 'grey.50',
+                    fontWeight: 'bold',
+                  },
+                  '& .MuiDataGrid-row:hover': {
+                    backgroundColor: 'action.hover',
+                  },
+                }}
+                onRowClick={(params) => {
+                  const entry = params.row;
+                  openContentModal(
+                    `Progress v${entry.version}: ${entry.description}`,
+                    `**Version:** ${entry.version}\n\n**Description:** ${entry.description}\n\n**Milestone Type:** ${entry.milestoneType}\n\n**Completion:** ${entry.completionPercentage}%\n\n${entry.blockers.length > 0 ? `**Blockers:**\n${entry.blockers.map((b: string) => `- ${b}`).join('\n')}\n\n` : ''}${entry.nextSteps.length > 0 ? `**Next Steps:**\n${entry.nextSteps.map((s: string) => `- ${s}`).join('\n')}\n\n` : ''}${entry.tags.length > 0 ? `**Tags:** ${entry.tags.join(', ')}\n\n` : ''}**Created:** ${formatDate(entry.createdAt)}${entry.updatedAt && entry.updatedAt !== entry.createdAt ? `\n**Updated:** ${formatDate(entry.updatedAt)}` : ''}`,
+                    entry
+                  );
+                }}
+              />
+            </Paper>
           )}
         </TabPanel>
 
@@ -1137,7 +1217,7 @@ const ProjectDetails = () => {
 
           <Grid container spacing={2}>
             {tasks.map((task) => (
-              <Grid item xs={12} md={6} key={task.id}>
+              <Grid size={{ xs: 12, md: 6 }} key={task.id}>
                 <Paper 
                   sx={{ 
                     p: 3, 
@@ -1265,7 +1345,7 @@ const ProjectDetails = () => {
           
           <Grid container spacing={2}>
             {memories.map((memory) => (
-              <Grid item xs={12} md={6} key={memory.id}>
+              <Grid size={{ xs: 12, md: 6 }} key={memory.id}>
                 <Paper 
                   sx={{ 
                     p: 3, 
@@ -1327,7 +1407,7 @@ const ProjectDetails = () => {
           
           <Grid container spacing={2}>
             {thinking.map((sequence) => (
-              <Grid item xs={12} md={6} key={sequence.id}>
+              <Grid size={{ xs: 12, md: 6 }} key={sequence.id}>
                 <Paper 
                   sx={{ 
                     p: 3, 

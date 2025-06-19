@@ -13,7 +13,7 @@ const Projects = React.lazy(() => import('./pages/ProjectsMUI'));
 const ProjectDetails = React.lazy(() => import('./pages/ProjectDetails'));
 const SequentialThinking = React.lazy(() => import('./pages/SequentialThinking'));
 const Analytics = React.lazy(() => import('./pages/Analytics'));
-const Search = React.lazy(() => import('./pages/Search'));
+
 const MCPTools = React.lazy(() => import('./pages/MCPTools'));
 const MetaLearning = React.lazy(() => import('./pages/MetaLearning'));
 
@@ -54,7 +54,7 @@ function App() {
               <Route path="/memories" element={<MemoryExplorer />} />
               <Route path="/thinking" element={<SequentialThinking />} />
               <Route path="/analytics" element={<Analytics />} />
-              <Route path="/search" element={<Search />} />
+  
               <Route path="/mcp-tools" element={<MCPTools />} />
               <Route path="/meta-learning" element={<MetaLearning />} />
               <Route path="/admin" element={<Administration />} />

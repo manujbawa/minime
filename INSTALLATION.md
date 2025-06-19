@@ -216,8 +216,9 @@ Open VS Code Settings JSON (`Ctrl+Shift+P` → "Preferences: Open User Settings 
 
 ```json
 {
-  "claude.mcpServers": {
+  "chat.mcp.servers": {
     "minime": {
+      "type": "stdio",
       "command": "minime-mcp",
       "env": {
         "MINIME_SERVER_URL": "http://localhost:8000",

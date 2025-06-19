@@ -5,10 +5,6 @@ import {
   Card,
   CardContent,
   Grid,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   Button,
   Alert,
   CircularProgress,
@@ -18,7 +14,6 @@ import {
   DialogActions,
   Avatar,
   Paper,
-  Divider,
   Chip,
   Autocomplete,
   TextField,
@@ -31,7 +26,6 @@ import {
   Delete as Trash2,
   Warning as AlertTriangle,
   Storage as Database,
-  Refresh as RefreshCw,
   Security as Shield,
   AdminPanelSettings,
   FolderOpen,
@@ -342,7 +336,7 @@ const AdminData = () => {
             {/* Projects List */}
             <Grid container spacing={2}>
               {projects.map((project) => (
-                <Grid item xs={12} md={6} key={project.id}>
+                <Grid size={{ xs: 12, md: 6 }} key={project.id}>
                   <Card variant="outlined">
                     <CardContent>
                       <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
@@ -473,7 +467,7 @@ const AdminData = () => {
             {/* Deletion Operations */}
             <Grid container spacing={3}>
               {/* Project-Specific Operations */}
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <Card sx={{ height: '100%' }}>
                   <CardContent>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
@@ -523,7 +517,7 @@ const AdminData = () => {
               </Grid>
 
               {/* System-Wide Operations */}
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <Card sx={{ height: '100%' }}>
                   <CardContent>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
@@ -585,7 +579,7 @@ const AdminData = () => {
             </Typography>
             <Grid container spacing={2}>
               {Object.entries(deletionStats).map(([key, value]) => (
-                <Grid item key={key}>
+                <Grid key={key}>
                   <Chip
                     label={`${key}: ${value}`}
                     color="info"
@@ -700,7 +694,7 @@ const AdminData = () => {
           </Typography>
         </Box>
         <Grid container spacing={2}>
-          <Grid item xs={12} md={6}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Typography variant="subtitle2" color="primary.main" gutterBottom>
               Before Deleting Data:
             </Typography>
@@ -711,7 +705,7 @@ const AdminData = () => {
               <li>Understand the scope of the operation</li>
             </Typography>
           </Grid>
-          <Grid item xs={12} md={6}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Typography variant="subtitle2" color="secondary.main" gutterBottom>
               What Gets Preserved:
             </Typography>

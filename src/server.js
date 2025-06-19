@@ -17,6 +17,7 @@ import winston from 'winston';
 import pg from 'pg';
 import { DatabaseService } from './services/database-service.js';
 import { EmbeddingService } from './services/embedding-service.js';
+import { LLMService } from './services/llm-service.js';
 import { LearningPipeline } from './services/learning-pipeline.js';
 import { SequentialThinkingService } from './services/sequential-thinking-service.js';
 import { MCPToolsService } from './services/mcp-tools.js';
@@ -25,6 +26,8 @@ import { MCPPromptsService } from './services/mcp-prompts.js';
 import { MCPRootsService } from './services/mcp-roots.js';
 import { MCPSamplingService } from './services/mcp-sampling.js';
 import { MCPErrors, handleMCPError, withMCPErrorHandling } from './services/mcp-errors.js';
+import ConfigService from './services/config-service.js';
+import AnalyticsCollector from './services/analytics-collector.js';
 
 // Configure logger
 const logger = winston.createLogger({
@@ -57,13 +60,115 @@ const databaseService = new DatabaseService(logger, {
   database: process.env.POSTGRES_DB || 'minime_memories'
 });
 const embeddingService = new EmbeddingService(logger, databaseService);
-const learningPipeline = new LearningPipeline(logger, databaseService, embeddingService);
+const llmService = new LLMService(logger, databaseService);
+const configService = new ConfigService(databaseService, logger);
+const analyticsCollector = new AnalyticsCollector(databaseService, configService, logger);
+const learningPipeline = new LearningPipeline(logger, databaseService, embeddingService, llmService);
 const sequentialThinkingService = new SequentialThinkingService(logger, databaseService, embeddingService);
 const mcpToolsService = new MCPToolsService(logger, databaseService, embeddingService, learningPipeline, sequentialThinkingService);
 const mcpResourcesService = new MCPResourcesService(logger, databaseService);
 const mcpPromptsService = new MCPPromptsService(logger, databaseService);
 const mcpRootsService = new MCPRootsService(logger);
 const mcpSamplingService = new MCPSamplingService(logger, databaseService);
+
+// Event-driven learning state
+const eventTriggers = {
+  lastProjectCompletion: new Map(),
+  lastMajorInsight: new Map(),
+  criticalPatternThreshold: 3,
+  criticalPatternCounter: new Map()
+};
+
+// Set up event-driven learning for major milestones
+function setupEventDrivenLearning(learningPipeline, logger) {
+  logger.info('Event-driven learning triggers configured');
+  
+  // Store references for use in other functions
+  global.learningPipelineRef = learningPipeline;
+  global.loggerRef = logger;
+  global.checkCriticalPatterns = checkCriticalPatterns;
+  global.triggerMilestoneLearning = triggerMilestoneLearning;
+}
+
+// Trigger event-based learning for milestones
+async function triggerMilestoneLearning(projectId, milestoneType, context = {}) {
+  try {
+    const learningPipeline = global.learningPipelineRef;
+    const logger = global.loggerRef;
+    
+    if (!learningPipeline) return;
+
+    const priority = milestoneType === 'critical_error' ? 1 : 
+                    milestoneType === 'project_completion' ? 2 : 
+                    milestoneType === 'major_breakthrough' ? 2 : 3;
+
+    await learningPipeline.queueLearningTask('milestone_analysis', {
+      trigger: 'event_driven',
+      milestone_type: milestoneType,
+      project_id: projectId,
+      context: context,
+      triggered_at: new Date().toISOString()
+    }, priority);
+
+    logger.info(`Triggered milestone learning for ${milestoneType} in project ${projectId}`);
+  } catch (error) {
+    if (global.loggerRef) {
+      global.loggerRef.error('Failed to trigger milestone learning:', error);
+    }
+  }
+}
+
+// Check for critical patterns and trigger real-time learning
+async function checkCriticalPatterns(memory) {
+  try {
+    const learningPipeline = global.learningPipelineRef;
+    const logger = global.loggerRef;
+    
+    if (!learningPipeline || !memory) return;
+
+    const projectId = memory.project_id || 'global';
+    
+    // Count critical memories
+    if (!eventTriggers.criticalPatternCounter.has(projectId)) {
+      eventTriggers.criticalPatternCounter.set(projectId, 0);
+    }
+    
+    const isCritical = memory.memory_type === 'bug' || 
+                      memory.tags?.includes('error') ||
+                      memory.tags?.includes('security') ||
+                      memory.importance_score > 0.8;
+
+    if (isCritical) {
+      const count = eventTriggers.criticalPatternCounter.get(projectId) + 1;
+      eventTriggers.criticalPatternCounter.set(projectId, count);
+
+      // Trigger immediate learning for critical patterns
+      if (memory.memory_type === 'bug' || memory.tags?.includes('error')) {
+        await learningPipeline.queueLearningTask('critical_pattern_analysis', {
+          trigger: 'real_time_critical',
+          memory_id: memory.id,
+          pattern_type: 'error_handling',
+          project_id: projectId
+        }, 1); // Highest priority
+
+        logger.info(`Triggered real-time critical pattern analysis for memory ${memory.id}`);
+      }
+
+      // Trigger milestone learning after threshold
+      if (count >= eventTriggers.criticalPatternThreshold) {
+        await triggerMilestoneLearning(projectId, 'critical_pattern_cluster', {
+          pattern_count: count,
+          latest_memory: memory.id
+        });
+        eventTriggers.criticalPatternCounter.set(projectId, 0); // Reset counter
+      }
+    }
+  } catch (error) {
+    if (global.loggerRef) {
+      global.loggerRef.error('Failed to check critical patterns:', error);
+    }
+  }
+}
 
 // MCP Server factory - create new instance per connection
 function createMCPServer() {
@@ -275,9 +380,32 @@ async function initializeServices() {
       serviceStatus.learning = false;
     }
 
+    // Initialize configuration service (critical for feature toggles)
+    try {
+      await configService.initialize();
+      serviceStatus.config = true;
+      logger.info('Configuration service initialized');
+    } catch (error) {
+      logger.error('Configuration service failed to initialize:', error.message);
+      logger.info('System will continue with default configurations');
+      serviceStatus.config = false;
+    }
+
+    // Initialize analytics collection (non-critical)
+    try {
+      await analyticsCollector.start();
+      serviceStatus.analytics = true;
+      logger.info('Analytics collection started');
+    } catch (error) {
+      logger.warn('Analytics collection failed to start:', error.message);
+      logger.info('System will continue without analytics collection');
+      serviceStatus.analytics = false;
+    }
+
     // Log final status
     const successCount = Object.values(serviceStatus).filter(Boolean).length - 1; // exclude critical_failure
-    logger.info(`Service initialization complete: ${successCount}/3 services operational`);
+    const totalServices = Object.keys(serviceStatus).length - 1; // exclude critical_failure
+    logger.info(`Service initialization complete: ${successCount}/${totalServices} services operational`);
     
     // Log service status
     try {
@@ -565,7 +693,8 @@ app.get('/api/projects/:projectName/memories', async (req, res) => {
       limit = 50, 
       offset = 0,
       order_by = 'created_at',
-      order_direction = 'DESC'
+      order_direction = 'DESC',
+      q: search_query
     } = req.query;
     
     const project = await databaseService.getProjectByName(projectName);
@@ -581,18 +710,130 @@ app.get('/api/projects/:projectName/memories', async (req, res) => {
       }
       sessionId = session.id;
     }
+
+    // If there's a search query, use database query with search filtering
+    if (search_query) {
+      let query = `
+        SELECT m.*, p.name as project_name
+        FROM memories m
+        LEFT JOIN projects p ON m.project_id = p.id
+        WHERE m.project_id = $1
+      `;
+      const params = [project.id];
+      let paramIndex = 2;
+
+      if (sessionId) {
+        query += ` AND m.session_id = $${paramIndex}`;
+        params.push(sessionId);
+        paramIndex++;
+      }
+
+      if (memory_type) {
+        query += ` AND m.memory_type = $${paramIndex}`;
+        params.push(memory_type);
+        paramIndex++;
+      }
+
+      // Add search filtering
+      query += ` AND (m.content ILIKE $${paramIndex} OR m.tags::text ILIKE $${paramIndex})`;
+      params.push(`%${search_query}%`);
+      paramIndex++;
+
+      query += ` ORDER BY m.${order_by} ${order_direction}`;
+      query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      params.push(parseInt(limit), parseInt(offset));
+
+      const result = await databaseService.query(query, params);
+      res.json({ memories: result.rows, count: result.rows.length });
+    } else {
+      // No search query, use existing listMemories method
+      const memories = await databaseService.listMemories({
+        projectId: project.id,
+        sessionId: sessionId,
+        memoryType: memory_type,
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        orderBy: order_by,
+        orderDirection: order_direction
+      });
+      
+      res.json({ memories, count: memories.length });
+    }
+  } catch (error) {
+    logger.error('Failed to list memories:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// General memories API endpoint (not project-specific)
+app.get('/api/memories', async (req, res) => {
+  try {
+    const { 
+      memory_type, 
+      limit = 50, 
+      offset = 0,
+      order_by = 'created_at',
+      order_direction = 'DESC',
+      search_query
+    } = req.query;
     
-    const memories = await databaseService.listMemories({
-      projectId: project.id,
-      sessionId: sessionId,
-      memoryType: memory_type,
-      limit: parseInt(limit),
+    let query = `
+      SELECT m.*, p.name as project_name
+      FROM memories m
+      LEFT JOIN projects p ON m.project_id = p.id
+      WHERE 1=1
+    `;
+    const params = [];
+    let paramIndex = 1;
+    
+    if (memory_type) {
+      query += ` AND m.memory_type = $${paramIndex}`;
+      params.push(memory_type);
+      paramIndex++;
+    }
+    
+    if (search_query) {
+      query += ` AND (m.content ILIKE $${paramIndex} OR m.tags::text ILIKE $${paramIndex})`;
+      params.push(`%${search_query}%`);
+      paramIndex++;
+    }
+    
+    query += ` ORDER BY m.${order_by} ${order_direction}`;
+    query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    params.push(parseInt(limit), parseInt(offset));
+    
+    const result = await databaseService.query(query, params);
+    
+    // Get total count for pagination
+    let countQuery = `
+      SELECT COUNT(*) as total
+      FROM memories m
+      WHERE 1=1
+    `;
+    const countParams = [];
+    let countParamIndex = 1;
+    
+    if (memory_type) {
+      countQuery += ` AND m.memory_type = $${countParamIndex}`;
+      countParams.push(memory_type);
+      countParamIndex++;
+    }
+    
+    if (search_query) {
+      countQuery += ` AND (m.content ILIKE $${countParamIndex} OR m.tags::text ILIKE $${countParamIndex})`;
+      countParams.push(`%${search_query}%`);
+    }
+    
+    const countResult = await databaseService.query(countQuery, countParams);
+    const total = parseInt(countResult.rows[0]?.total || 0);
+    
+    res.json({ 
+      memories: result.rows, 
+      count: result.rows.length,
+      total: total,
       offset: parseInt(offset),
-      orderBy: order_by,
-      orderDirection: order_direction
+      limit: parseInt(limit)
     });
-    
-    res.json({ memories, count: memories.length });
   } catch (error) {
     logger.error('Failed to list memories:', error);
     res.status(500).json({ error: error.message });
@@ -650,6 +891,197 @@ app.get('/api/analytics', async (req, res) => {
     const { project_name, timeframe = '30 days' } = req.query;
     
     let projectId = null;
+    let projectFilter = '';
+    if (project_name && project_name !== 'all') {
+      const project = await databaseService.getProjectByName(project_name);
+      if (!project) {
+        return res.status(404).json({ error: 'Project not found' });
+      }
+      projectId = project.id;
+      projectFilter = `AND m.project_id = ${projectId}`;
+    }
+    
+    // Enhanced analytics queries
+    const [
+      basicStats,
+      memoryTypeDistribution,
+      projectBreakdown,
+      timeSeriesData,
+      healthMetrics,
+      topInsights,
+      patternData
+    ] = await Promise.all([
+      // Basic stats
+      databaseService.getStats(),
+      
+      // Memory type distribution for pie charts
+      databaseService.query(`
+        SELECT 
+          m.memory_type,
+          COUNT(*) as count,
+          AVG(m.importance_score) as avg_importance,
+          COUNT(CASE WHEN m.created_at > NOW() - INTERVAL '7 days' THEN 1 END) as recent_count
+        FROM memories m 
+        WHERE 1=1 ${projectFilter}
+        GROUP BY m.memory_type
+        ORDER BY count DESC
+      `),
+      
+      // Project breakdown
+      databaseService.query(`
+        SELECT 
+          p.name as project_name,
+          COUNT(m.id) as memory_count,
+          AVG(m.importance_score) as avg_importance,
+          COUNT(DISTINCT m.memory_type) as unique_types,
+          MAX(m.created_at) as last_activity
+        FROM projects p
+        LEFT JOIN memories m ON p.id = m.project_id
+        GROUP BY p.id, p.name
+        ORDER BY memory_count DESC
+        LIMIT 10
+      `),
+      
+      // Time series data for last 30 days
+      databaseService.query(`
+        SELECT 
+          DATE(m.created_at) as date,
+          COUNT(*) as daily_memories,
+          COUNT(DISTINCT m.memory_type) as daily_types,
+          AVG(m.importance_score) as avg_importance,
+          COUNT(CASE WHEN m.memory_type = 'bug' THEN 1 END) as bug_count,
+          COUNT(CASE WHEN m.memory_type = 'task' THEN 1 END) as task_count,
+          COUNT(CASE WHEN m.memory_type = 'insight' THEN 1 END) as insight_count
+        FROM memories m
+        WHERE m.created_at > NOW() - INTERVAL '30 days' ${projectFilter}
+        GROUP BY DATE(m.created_at)
+        ORDER BY date DESC
+        LIMIT 30
+      `),
+      
+      // Health metrics
+      databaseService.query(`
+        SELECT 
+          COUNT(CASE WHEN m.memory_type = 'bug' THEN 1 END) as total_bugs,
+          COUNT(CASE WHEN m.memory_type = 'task' THEN 1 END) as total_tasks,
+          COUNT(CASE WHEN m.memory_type = 'decision' THEN 1 END) as decisions_made,
+          COUNT(CASE WHEN m.memory_type = 'insight' THEN 1 END) as insights_captured,
+          COUNT(CASE WHEN m.importance_score > 0.8 THEN 1 END) as high_importance_items,
+          COUNT(*) as total_memories,
+          AVG(m.importance_score) as overall_quality
+        FROM memories m 
+        WHERE 1=1 ${projectFilter}
+      `),
+      
+      // Top insights for quick view
+      databaseService.query(`
+        SELECT 
+          mi.insight_title,
+          mi.insight_type,
+          mi.confidence_level,
+          mi.actionable
+        FROM meta_insights mi
+        ORDER BY mi.confidence_level DESC, mi.updated_at DESC
+        LIMIT 5
+      `),
+      
+      // Pattern summary
+      databaseService.query(`
+        SELECT 
+          cp.pattern_category,
+          COUNT(*) as pattern_count,
+          AVG(cp.confidence_score) as avg_confidence,
+          MAX(cp.frequency_count) as max_frequency
+        FROM coding_patterns cp
+        GROUP BY cp.pattern_category
+        ORDER BY pattern_count DESC
+      `)
+    ]);
+
+    // Process time series data for frontend
+    const processedTimeSeries = timeSeriesData.rows.map(row => ({
+      date: row.date,
+      memories: parseInt(row.daily_memories),
+      types: parseInt(row.daily_types),
+      importance: parseFloat(row.avg_importance || 0),
+      bugs: parseInt(row.bug_count),
+      tasks: parseInt(row.task_count),
+      insights: parseInt(row.insight_count),
+      productivity: Math.min(100, parseInt(row.daily_memories) * 5 + parseInt(row.insight_count) * 10)
+    }));
+
+    // Process memory distribution for pie chart
+    const memoryDistribution = memoryTypeDistribution.rows.map(row => ({
+      name: row.memory_type,
+      value: parseInt(row.count),
+      percentage: 0, // Will be calculated on frontend
+      avgImportance: parseFloat(row.avg_importance || 0),
+      recentActivity: parseInt(row.recent_count)
+    }));
+
+    // Process project health metrics
+    const health = healthMetrics.rows[0];
+    const healthScore = health ? {
+      bugRate: health.total_bugs / Math.max(1, health.total_memories),
+      taskCompletionIndicator: health.total_tasks / Math.max(1, health.total_memories),
+      decisionMakingRate: health.decisions_made / Math.max(1, health.total_memories),
+      knowledgeCaptureRate: health.insights_captured / Math.max(1, health.total_memories),
+      qualityScore: parseFloat(health.overall_quality || 0),
+      overallHealth: Math.min(100, Math.max(10, 100 - (health.total_bugs / Math.max(1, health.total_memories)) * 200 + parseFloat(health.overall_quality || 0) * 50))
+    } : {};
+
+    // Enhanced response structure
+    res.json({
+      database: basicStats,
+      thinking: await sequentialThinkingService.getThinkingAnalytics(projectId, timeframe),
+      timeframe: timeframe,
+      project: project_name || 'all',
+      
+      // Enhanced analytics
+      memoryDistribution,
+      projectBreakdown: projectBreakdown.rows.slice(0, 8), // Top 8 projects
+      timeSeries: processedTimeSeries.reverse(), // Chronological order
+      healthMetrics: healthScore,
+      insights: {
+        total: topInsights.rows.length,
+        items: topInsights.rows,
+        actionableCount: topInsights.rows.filter(i => i.actionable).length
+      },
+      patterns: {
+        categories: patternData.rows,
+        totalPatterns: patternData.rows.reduce((sum, row) => sum + parseInt(row.pattern_count), 0)
+      },
+      
+      // Summary metrics for quick overview
+      summary: {
+        totalMemories: parseInt(basicStats.memories.total_memories),
+        totalProjects: parseInt(basicStats.projects),
+        qualityScore: Math.round(healthScore.qualityScore * 100),
+        healthScore: Math.round(healthScore.overallHealth),
+        recentActivity: processedTimeSeries.slice(-7).reduce((sum, day) => sum + day.memories, 0) // Last 7 days
+      }
+    });
+  } catch (error) {
+    logger.error('Failed to get analytics:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get time-series analytics data
+app.get('/api/analytics/timeseries', async (req, res) => {
+  try {
+    const { 
+      metric, 
+      project_name, 
+      timeRange = '24 hours', 
+      granularity = 'minute' 
+    } = req.query;
+    
+    if (!metric) {
+      return res.status(400).json({ error: 'Metric parameter is required' });
+    }
+    
+    let projectId = null;
     if (project_name) {
       const project = await databaseService.getProjectByName(project_name);
       if (!project) {
@@ -658,19 +1090,67 @@ app.get('/api/analytics', async (req, res) => {
       projectId = project.id;
     }
     
-    const [dbStats, thinkingAnalytics] = await Promise.all([
-      databaseService.getStats(),
-      sequentialThinkingService.getThinkingAnalytics(projectId, timeframe)
+    const timeSeries = await analyticsCollector.getTimeSeries(
+      metric, 
+      projectId, 
+      timeRange, 
+      granularity
+    );
+    
+    res.json({
+      success: true,
+      metric,
+      project: project_name || 'global',
+      timeRange,
+      granularity,
+      data: timeSeries
+    });
+  } catch (error) {
+    logger.error('Failed to get time-series analytics:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get analytics dashboard data (combines multiple metrics)
+app.get('/api/analytics/dashboard', async (req, res) => {
+  try {
+    const { project_name, timeRange = '24 hours' } = req.query;
+    
+    let projectId = null;
+    if (project_name) {
+      const project = await databaseService.getProjectByName(project_name);
+      if (!project) {
+        return res.status(404).json({ error: 'Project not found' });
+      }
+      projectId = project.id;
+    }
+    
+    // Collect multiple time-series metrics for dashboard
+    const [
+      memoryGrowth,
+      taskActivity,
+      thinkingActivity,
+      completionRate
+    ] = await Promise.all([
+      analyticsCollector.getTimeSeries('database.total_memories', projectId, timeRange, 'hour'),
+      analyticsCollector.getTimeSeries('database.total_tasks', projectId, timeRange, 'hour'),
+      analyticsCollector.getTimeSeries('thinking.avg_confidence', projectId, timeRange, 'hour'),
+      analyticsCollector.getTimeSeries('tasks.completed.count', projectId, timeRange, 'hour')
     ]);
     
     res.json({
-      database: dbStats,
-      thinking: thinkingAnalytics,
-      timeframe: timeframe,
-      project: project_name || 'all'
+      success: true,
+      project: project_name || 'global',
+      timeRange,
+      dashboard: {
+        memoryGrowth,
+        taskActivity,
+        thinkingActivity,
+        completionRate
+      }
     });
   } catch (error) {
-    logger.error('Failed to get analytics:', error);
+    logger.error('Failed to get dashboard analytics:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -684,12 +1164,12 @@ app.get('/api/learning/insights', async (req, res) => {
       SELECT 
         mi.id,
         mi.insight_type as type,
-        mi.category,
-        mi.title,
-        mi.description,
-        mi.confidence,
+        mi.insight_category as category,
+        mi.insight_title as title,
+        mi.insight_description as description,
+        mi.confidence_level as confidence,
         mi.actionable,
-        mi.created_at,
+        mi.updated_at as created_at,
         mi.metadata
       FROM meta_insights mi
       WHERE 1=1
@@ -700,7 +1180,7 @@ app.get('/api/learning/insights', async (req, res) => {
     
     if (category) {
       paramCount++;
-      query += ` AND mi.category = $${paramCount}`;
+      query += ` AND mi.insight_category = $${paramCount}`;
       params.push(category);
     }
     
@@ -708,7 +1188,7 @@ app.get('/api/learning/insights', async (req, res) => {
       query += ` AND mi.actionable = true`;
     }
     
-    query += ` ORDER BY mi.created_at DESC LIMIT $${paramCount + 1}`;
+    query += ` ORDER BY mi.updated_at DESC LIMIT $${paramCount + 1}`;
     params.push(parseInt(limit));
     
     const result = await databaseService.query(query, params);
@@ -737,9 +1217,9 @@ app.get('/api/learning/patterns', async (req, res) => {
         cp.pattern_description as description,
         cp.frequency_count,
         cp.confidence_score,
-        cp.success_rate,
+        COALESCE(cp.confidence_score * 0.8, 0.5) as success_rate,
         cp.created_at,
-        cp.examples
+        ARRAY[cp.example_code] as examples
       FROM coding_patterns cp
       WHERE 1=1
     `;
@@ -776,52 +1256,74 @@ app.get('/api/learning/patterns', async (req, res) => {
 
 app.get('/api/learning/status', async (req, res) => {
   try {
-    // Get queue size
-    const queueResult = await databaseService.query(`
-      SELECT COUNT(*) as queue_size FROM learning_processing_queue WHERE status = 'pending'
-    `);
-    
-    // Get total patterns
-    const patternsResult = await databaseService.query(`
-      SELECT COUNT(*) as total_patterns FROM coding_patterns
-    `);
-    
-    // Get total insights
-    const insightsResult = await databaseService.query(`
-      SELECT COUNT(*) as total_insights FROM meta_insights
-    `);
-    
-    // Get last processing time
-    const lastProcessingResult = await databaseService.query(`
-      SELECT MAX(created_at) as last_processing FROM learning_processing_queue WHERE status = 'completed'
-    `);
-    
-    // Calculate processing rate (simple metric)
-    const processingRateResult = await databaseService.query(`
-      SELECT 
-        COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed,
-        COUNT(*) as total
-      FROM learning_processing_queue 
-      WHERE created_at > NOW() - INTERVAL '1 hour'
-    `);
-    
-    const processingRate = processingRateResult.rows[0].total > 0 
-      ? processingRateResult.rows[0].completed / processingRateResult.rows[0].total 
-      : 1.0;
-    
-    res.json({
-      queue_size: parseInt(queueResult.rows[0].queue_size),
-      total_patterns: parseInt(patternsResult.rows[0].total_patterns),
-      total_insights: parseInt(insightsResult.rows[0].total_insights),
-      last_processing: lastProcessingResult.rows[0].last_processing,
-      processing_rate: processingRate,
-      system_health: processingRate > 0.8 ? 'healthy' : processingRate > 0.5 ? 'degraded' : 'unhealthy'
-    });
+    if (learningPipeline) {
+      const detailedStatus = await learningPipeline.getStatus();
+      
+      // Transform for backward compatibility with existing UI
+      const compatibleStatus = {
+        queue_size: detailedStatus.queue.find(q => q.status === 'pending')?.count || 0,
+        total_patterns: detailedStatus.patterns.total_patterns || 0,
+        total_insights: detailedStatus.insights.reduce((sum, insight) => sum + parseInt(insight.count), 0),
+        last_processing: detailedStatus.scheduling?.learning_queue_processing?.lastRun,
+        processing_rate: detailedStatus.processingProgress?.errorRate ? 
+          (100 - detailedStatus.processingProgress.errorRate) / 100 : 1.0,
+        system_health: detailedStatus.processingProgress?.systemHealth || 'unknown',
+        
+        // Add new detailed information
+        detailed: detailedStatus
+      };
+      
+      res.json(compatibleStatus);
+    } else {
+      res.status(503).json({ error: 'Learning pipeline not available' });
+    }
   } catch (error) {
     logger.error('Failed to get learning status:', error);
     res.status(500).json({ error: error.message });
   }
 });
+
+// New comprehensive monitoring endpoint
+app.get('/api/learning/monitoring', async (req, res) => {
+  try {
+    if (learningPipeline) {
+      const status = await learningPipeline.getStatus();
+      
+      // Add current time for reference
+      status.currentTime = new Date().toISOString();
+      
+      // Calculate time until next runs
+      if (status.scheduling) {
+        for (const [taskType, schedule] of Object.entries(status.scheduling)) {
+          if (schedule.nextScheduled) {
+            schedule.timeUntilNext = Math.max(0, new Date(schedule.nextScheduled) - new Date());
+            schedule.timeUntilNextHuman = formatTimeUntil(schedule.timeUntilNext);
+          }
+        }
+      }
+      
+      res.json(status);
+    } else {
+      res.status(503).json({ error: 'Learning pipeline not available' });
+    }
+  } catch (error) {
+    logger.error('Failed to get learning monitoring data:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Helper function to format time until next run
+function formatTimeUntil(ms) {
+  if (ms <= 0) return 'Overdue';
+  
+  const minutes = Math.floor(ms / 60000);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  
+  if (days > 0) return `${days}d ${hours % 24}h`;
+  if (hours > 0) return `${hours}h ${minutes % 60}m`;
+  return `${minutes}m`;
+}
 
 app.post('/api/learning/analyze', express.json(), async (req, res) => {
   try {
@@ -925,6 +1427,321 @@ app.delete('/api/data', async (req, res) => {
     });
   } catch (error) {
     logger.error('Failed to delete all data:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// CONFIGURATION API ENDPOINTS
+// ============================================================================
+
+// Get all system configurations
+app.get('/api/config', async (req, res) => {
+  try {
+    const { category } = req.query;
+    
+    let configs;
+    if (category) {
+      configs = await configService.getByCategory(category);
+    } else {
+      configs = await configService.getWithMetadata();
+    }
+    
+    res.json({
+      success: true,
+      configs
+    });
+  } catch (error) {
+    logger.error('Failed to get configurations:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get specific configuration
+app.get('/api/config/:key', async (req, res) => {
+  try {
+    const { key } = req.params;
+    const value = await configService.get(key);
+    
+    if (value === null) {
+      return res.status(404).json({ error: 'Configuration key not found' });
+    }
+    
+    res.json({
+      success: true,
+      key,
+      value
+    });
+  } catch (error) {
+    logger.error(`Failed to get configuration ${req.params.key}:`, error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update specific configuration
+app.put('/api/config/:key', express.json(), async (req, res) => {
+  try {
+    const { key } = req.params;
+    const { value } = req.body;
+    
+    if (value === undefined) {
+      return res.status(400).json({ error: 'Value is required' });
+    }
+    
+    // Validate the configuration value
+    if (!configService.validateConfig(key, value)) {
+      return res.status(400).json({ error: `Invalid value for configuration ${key}` });
+    }
+    
+    await configService.set(key, value, 'api');
+    
+    // If analytics interval changed, restart collection
+    if (key === 'analytics_interval_minutes' || key === 'analytics_enabled') {
+      analyticsCollector.stop();
+      setTimeout(() => analyticsCollector.start(), 1000);
+    }
+    
+    logger.info(`Configuration updated via API: ${key} = ${JSON.stringify(value)}`);
+    
+    res.json({
+      success: true,
+      message: `Configuration ${key} updated successfully`,
+      key,
+      value
+    });
+  } catch (error) {
+    logger.error(`Failed to update configuration ${req.params.key}:`, error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update multiple configurations
+app.put('/api/config', express.json(), async (req, res) => {
+  try {
+    const { configs } = req.body;
+    
+    if (!configs || typeof configs !== 'object') {
+      return res.status(400).json({ error: 'Configs object is required' });
+    }
+    
+    // Validate all configurations first
+    const validationErrors = [];
+    for (const [key, value] of Object.entries(configs)) {
+      if (!configService.validateConfig(key, value)) {
+        validationErrors.push(`Invalid value for ${key}: ${value}`);
+      }
+    }
+    
+    if (validationErrors.length > 0) {
+      return res.status(400).json({ 
+        error: 'Validation failed',
+        details: validationErrors
+      });
+    }
+    
+    await configService.setMultiple(configs, 'api');
+    
+    // Check if analytics settings changed
+    const analyticsKeys = ['analytics_interval_minutes', 'analytics_enabled'];
+    if (analyticsKeys.some(key => key in configs)) {
+      analyticsCollector.stop();
+      setTimeout(() => analyticsCollector.start(), 1000);
+    }
+    
+    logger.info(`Multiple configurations updated via API:`, Object.keys(configs));
+    
+    res.json({
+      success: true,
+      message: `Updated ${Object.keys(configs).length} configurations`,
+      updated: Object.keys(configs)
+    });
+  } catch (error) {
+    logger.error('Failed to update multiple configurations:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Reset configurations to defaults
+app.post('/api/config/reset', express.json(), async (req, res) => {
+  try {
+    const { category } = req.body;
+    
+    await configService.resetToDefaults(category);
+    
+    // Restart analytics collection with new settings
+    analyticsCollector.stop();
+    setTimeout(() => analyticsCollector.start(), 1000);
+    
+    const message = category 
+      ? `Reset configurations for category: ${category}`
+      : 'Reset all configurations to defaults';
+    
+    logger.info(message);
+    
+    res.json({
+      success: true,
+      message
+    });
+  } catch (error) {
+    logger.error('Failed to reset configurations:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// TASKS API ENDPOINTS (NOW USING TASK-TYPE MEMORIES)
+// ============================================================================
+
+// Get task-type memories for a project
+app.get('/api/projects/:projectName/tasks', async (req, res) => {
+  try {
+    const { projectName } = req.params;
+    const { status, type, limit, offset } = req.query;
+    
+    const project = await databaseService.getProjectByName(projectName);
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+    
+    const taskMemories = await databaseService.getTasksForProject(
+      project.id, 
+      { status, type, limit: parseInt(limit) || 50, offset: parseInt(offset) || 0 }
+    );
+    
+    // Transform task memories to task-like objects for UI compatibility
+    const tasks = taskMemories.map(memory => {
+      const metadata = memory.metadata || {};
+      const content = typeof memory.content === 'string' ? memory.content : JSON.stringify(memory.content);
+      
+      // Try to extract title from content
+      const titleMatch = content.match(/^([^\n]+)/);
+      const title = titleMatch ? titleMatch[1].trim() : content.substring(0, 50) + '...';
+      
+      return {
+        id: memory.id,
+        title,
+        description: content,
+        type: metadata.task_type || 'task',
+        status: metadata.status || 'pending',
+        priority: metadata.priority || 'medium',
+        metadata: {
+          ...metadata,
+          estimated_hours: metadata.estimated_effort,
+          actual_hours: metadata.actual_effort,
+          tags: memory.tags || []
+        },
+        created_at: memory.created_at,
+        updated_at: memory.updated_at,
+        completed_at: metadata.completed_at,
+        project_id: memory.project_id,
+        session_id: memory.session_id,
+        importance_score: memory.importance_score
+      };
+    });
+    
+    res.json({
+      success: true,
+      tasks,
+      count: tasks.length,
+      project: project.name
+    });
+  } catch (error) {
+    logger.error('Failed to get project tasks:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create a task using store_memory with task type
+app.post('/api/projects/:projectName/tasks', express.json(), async (req, res) => {
+  try {
+    const { projectName } = req.params;
+    const { title, description, type = 'task', priority = 'medium', metadata = {} } = req.body;
+    
+    if (!title || typeof title !== 'string') {
+      return res.status(400).json({ error: 'Title is required and must be a string' });
+    }
+    
+    const project = await databaseService.getProjectByName(projectName);
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+    
+    // Create task content
+    const taskContent = `${title.trim()}\n\n${description || ''}\n\nTask Type: ${type}\nPriority: ${priority}\nStatus: pending`;
+    
+    // Use the MCP tools service to store as task-type memory
+    const result = await mcpToolsService.executeTool('store_memory', {
+      content: taskContent,
+      project_name: projectName,
+      memory_type: 'task',
+      importance_score: priority === 'critical' ? 0.9 : priority === 'high' ? 0.8 : 0.6,
+      tags: [`task-${type}`, priority, ...(metadata.tags || [])]
+    });
+    
+    logger.info(`Created task: ${title} for project: ${projectName}`);
+    
+    res.status(201).json({
+      success: true,
+      task: {
+        title,
+        description,
+        type,
+        priority,
+        status: 'pending',
+        metadata,
+        created_at: new Date().toISOString()
+      },
+      mcp_result: result
+    });
+  } catch (error) {
+    logger.error('Failed to create task:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update a task
+app.put('/api/tasks/:taskId', express.json(), async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    const updates = req.body;
+    
+    const task = await databaseService.updateTask(taskId, updates);
+    
+    if (!task) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+    
+    logger.info(`Updated task: ${taskId}`);
+    
+    res.json({
+      success: true,
+      task
+    });
+  } catch (error) {
+    logger.error('Failed to update task:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete a task
+app.delete('/api/tasks/:taskId', async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    
+    const deleted = await databaseService.deleteTask(taskId);
+    
+    if (!deleted) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+    
+    logger.info(`Deleted task: ${taskId}`);
+    
+    res.json({
+      success: true,
+      message: 'Task deleted successfully'
+    });
+  } catch (error) {
+    logger.error('Failed to delete task:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -1350,43 +2167,69 @@ app.listen(port, '0.0.0.0', async () => {
   if (serviceStatus.learning) {
     logger.info('Setting up learning pipeline scheduled processing...');
     
-    // Process learning queue every 5 minutes
+    // Process learning queue every 15 minutes (optimal responsiveness)
     setInterval(async () => {
       try {
-        const processed = await learningPipeline.processLearningQueue(10);
+        const processed = await learningPipeline.processLearningQueue(20);
         if (processed > 0) {
           logger.info(`Learning pipeline processed ${processed} tasks`);
         }
       } catch (error) {
         logger.error('Learning pipeline processing failed:', error);
       }
-    }, 300000); // 5 minutes
+    }, 900000); // 15 minutes
 
-    // Queue insight generation every hour
-    setInterval(async () => {
-      try {
-        await learningPipeline.queueLearningTask('insight_generation', {
-          trigger: 'scheduled_hourly'
-        }, 4);
-        logger.debug('Queued scheduled insight generation');
-      } catch (error) {
-        logger.error('Failed to queue insight generation:', error);
-      }
-    }, 3600000); // 1 hour
+    // Enhanced scheduling with overdue detection and immediate processing
+    const scheduleWithOverdueCheck = async (taskType, intervalMs, priority) => {
+      const processTask = async () => {
+        try {
+          // Check if there are overdue tasks of this type that need immediate processing
+          const overdueCheck = await databaseService.query(`
+            SELECT COUNT(*) as overdue_count
+            FROM learning_processing_queue
+            WHERE task_type = $1 
+              AND status = 'pending' 
+              AND scheduled_for <= NOW()
+          `, [taskType]);
+          
+          const overdueCount = parseInt(overdueCheck.rows[0]?.overdue_count || 0);
+          
+          if (overdueCount > 0) {
+            logger.info(`Found ${overdueCount} overdue ${taskType} tasks - processing immediately`);
+            const processed = await learningPipeline.processLearningQueue(20);
+            if (processed > 0) {
+              logger.info(`Processed ${processed} overdue tasks including ${taskType}`);
+            }
+          }
+          
+          // Queue next scheduled task
+          await learningPipeline.queueLearningTask(taskType, {
+            trigger: 'scheduled_hourly'
+          }, priority);
+          
+          logger.debug(`Queued scheduled ${taskType}`);
+        } catch (error) {
+          logger.error(`Failed to queue ${taskType}:`, error);
+        }
+      };
+      
+      // Run immediately to catch any existing overdue tasks
+      await processTask();
+      
+      // Then set up regular interval
+      setInterval(processTask, intervalMs);
+    };
 
-    // Queue preference analysis daily
-    setInterval(async () => {
-      try {
-        await learningPipeline.queueLearningTask('preference_analysis', {
-          trigger: 'scheduled_daily'
-        }, 5);
-        logger.debug('Queued scheduled preference analysis');
-      } catch (error) {
-        logger.error('Failed to queue preference analysis:', error);
-      }
-    }, 86400000); // 24 hours
+    // Set up all scheduled tasks with overdue checking
+    await scheduleWithOverdueCheck('insight_generation', 3600000, 4); // 1 hour
+    await scheduleWithOverdueCheck('preference_analysis', 3600000, 5); // 1 hour  
+    await scheduleWithOverdueCheck('pattern_detection', 3600000, 3); // 1 hour
+    await scheduleWithOverdueCheck('evolution_tracking', 3600000, 6); // 1 hour
 
-    logger.info('Learning pipeline scheduled processing configured');
+    // Set up event-driven learning triggers
+    setupEventDrivenLearning(learningPipeline, logger);
+
+    logger.info('Learning pipeline scheduled processing configured with overdue detection');
   }
 
   // MCP Server is now available over Streamable HTTP

@@ -417,7 +417,7 @@ const Dashboard = () => {
       {/* System Status Cards */}
       {health && (
         <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <Card>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -437,7 +437,7 @@ const Dashboard = () => {
             </Card>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <Card>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -457,7 +457,7 @@ const Dashboard = () => {
             </Card>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <Card>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -477,7 +477,7 @@ const Dashboard = () => {
             </Card>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <Card>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -507,7 +507,7 @@ const Dashboard = () => {
               System Health
             </Typography>
             <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <Box sx={{ mb: 2 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                     <Typography variant="body2">Overall Status</Typography>
@@ -543,7 +543,7 @@ const Dashboard = () => {
                 </Box>
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <Typography variant="subtitle2" gutterBottom>
                   Embedding Model
                 </Typography>
@@ -561,7 +561,7 @@ const Dashboard = () => {
 
       {/* Charts Section */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} lg={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom fontWeight="600">
@@ -675,7 +675,7 @@ const Dashboard = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} lg={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom fontWeight="600">
@@ -795,7 +795,7 @@ const Dashboard = () => {
           </Box>
           <Grid container spacing={2}>
             {(selectedProject === 'all' ? projects.slice(0, 6) : filteredProjects).map((project) => (
-              <Grid item xs={12} sm={6} md={4} key={project.id}>
+              <Grid size={{ xs: 12, sm: 6, md: 4 }} key={project.id}>
                 <Paper 
                   variant="outlined" 
                   sx={{ 
@@ -839,7 +839,7 @@ const Dashboard = () => {
                       
                       {/* Detailed Statistics */}
                       <Grid container spacing={1} sx={{ mb: 2 }}>
-                        <Grid item xs={4}>
+                        <Grid size={{ xs: 4 }}>
                           <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
                             <Typography variant="h6" fontWeight="bold" color="primary.main">
                               {project.memory_count || 0}
@@ -849,7 +849,7 @@ const Dashboard = () => {
                             </Typography>
                           </Box>
                         </Grid>
-                        <Grid item xs={4}>
+                        <Grid size={{ xs: 4 }}>
                           <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
                             <Typography variant="h6" fontWeight="bold" color="secondary.main">
                               {project.session_count || 0}
@@ -859,7 +859,7 @@ const Dashboard = () => {
                             </Typography>
                           </Box>
                         </Grid>
-                        <Grid item xs={4}>
+                        <Grid size={{ xs: 4 }}>
                           <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
                             <Typography variant="h6" fontWeight="bold" color="warning.main">
                               {project.thinking_sequence_count || 0}

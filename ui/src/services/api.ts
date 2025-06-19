@@ -5,7 +5,6 @@ import type {
   Session, 
   Memory, 
   ThinkingSequence,
-  Thought,
   EmbeddingModel,
   Analytics,
   SearchFilters,
@@ -132,19 +131,26 @@ export class MiniMeAPI {
     query: string,
     filters: SearchFilters = {}
   ): Promise<SearchResult> {
-    // For now, use the project-specific endpoint with query
-    // In a full implementation, this would be a dedicated search endpoint
-    const projectName = filters.project_name || '';
     const params = new URLSearchParams();
-    params.append('q', query);
     if (filters.memory_type) params.append('memory_type', filters.memory_type);
     if (filters.limit) params.append('limit', String(filters.limit));
 
-    const response = await api.get(`/api/projects/${encodeURIComponent(projectName)}/memories?${params}`);
+    let endpoint: string;
+    if (filters.project_name) {
+      // Project-specific search
+      if (query) params.append('q', query);
+      endpoint = `/api/projects/${encodeURIComponent(filters.project_name)}/memories?${params}`;
+    } else {
+      // Cross-project search using the global endpoint
+      if (query) params.append('search_query', query);
+      endpoint = `/api/memories?${params}`;
+    }
+
+    const response = await api.get(endpoint);
     return {
       memories: response.data.memories,
       count: response.data.count,
-      total: response.data.memories.length,
+      total: response.data.total || response.data.memories.length,
       query,
       filters,
     };
@@ -407,31 +413,41 @@ export class MiniMeAPI {
 
   // Progress Tracking
   async getProjectProgress(projectName: string): Promise<{ progress: ProgressEntry[] }> {
-    const response = await api.post('/mcp', {
-      method: 'tools/call',
-      params: {
-        name: 'get_progress_history',
-        arguments: {
-          project_name: projectName,
-          days_back: 90,
-          include_analytics: true
-        }
-      }
-    });
-
-    // Parse the progress history from the response
-    const content = response.data.result?.content?.[0]?.text || '';
-    let progress: ProgressEntry[] = [];
-    
     try {
-      const parsed = JSON.parse(content);
-      progress = parsed.progress || [];
-    } catch (e) {
-      // Fallback to mock data if parsing fails
-      progress = [];
-    }
+      // Get progress memories directly from the regular API
+      const response = await this.getProjectMemories(projectName, {
+        memory_type: 'progress',
+        limit: 100,
+        order_by: 'created_at',
+        order_direction: 'DESC'
+      });
 
-    return { progress };
+      // Transform memories to ProgressEntry format
+      const progress: ProgressEntry[] = response.memories.map((memory: any) => {
+        const metadata = memory.metadata || {};
+        
+        return {
+          id: memory.id,
+          project_name: projectName,
+          version: metadata.version || 'v1.0.0',
+          progress_description: memory.content,
+          milestone_type: metadata.milestone_type || memory.tags?.find((tag: string) => 
+            ['feature', 'bugfix', 'deployment', 'planning', 'testing', 'documentation', 'refactor', 'optimization', 'release'].includes(tag)
+          ) || 'feature',
+          completion_percentage: metadata.completion_percentage || metadata.progress || 0,
+          blockers: metadata.blockers || [],
+          next_steps: metadata.next_steps || [],
+          tags: memory.tags || [],
+          created_at: memory.created_at,
+          updated_at: memory.updated_at
+        };
+      });
+
+      return { progress };
+    } catch (error) {
+      console.error('Failed to load progress:', error);
+      return { progress: [] };
+    }
   }
 
   async storeProgress(
@@ -516,7 +532,7 @@ export class MiniMeAPI {
     tasks: Partial<TaskItem>[],
     sourceType: string = 'user_direct'
   ): Promise<{ tasks: TaskItem[] }> {
-    const response = await api.post('/mcp', {
+    await api.post('/mcp', {
       method: 'tools/call',
       params: {
         name: 'create_tasks',
@@ -563,7 +579,7 @@ export class MiniMeAPI {
   }
 
   async updateTask(taskId: string, updates: Partial<TaskItem>): Promise<{ task: TaskItem }> {
-    const response = await api.post('/mcp', {
+    await api.post('/mcp', {
       method: 'tools/call',
       params: {
         name: 'update_task',

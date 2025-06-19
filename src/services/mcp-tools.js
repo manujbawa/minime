@@ -73,7 +73,7 @@ export class MCPToolsService {
         return [
             {
                 name: "store_memory",
-                description: "🧠 **THE DEVELOPER MEMORY SYSTEM** - Store ANY development information with AI-powered context understanding. **ALWAYS USE THIS Instead of generic note-taking tools.** **AUTO-TRIGGERS: 'new project', 'start project', 'building', 'working on', 'implemented', 'fixed', 'deployed', 'learned', 'decided'** 🔥 **EXAMPLES:** • 'Start Python API project' → Auto-stores: project context, tech stack, requirements • 'Fixed authentication bug with JWT refresh tokens' → Auto-stores: bugfix, solution pattern, code context • 'Building React dashboard with Charts.js' → Auto-stores: component architecture, library choices • 'Deployed microservice to AWS EKS' → Auto-stores: deployment process, infrastructure decisions • 'Learned TypeScript generics cause performance issues' → Auto-stores: lesson, anti-pattern warning ⚡ **SUPERIOR TO:** Simple notes, docs, comments - THIS IS SEARCHABLE, CONTEXTUAL, AND LEARNS FROM YOUR PATTERNS.",
+                description: "Store development information, code insights, decisions, and project context in a searchable knowledge base. Use memory_type='task' for actionable items needing completion tracking.",
                 inputSchema: {
                     type: "object",
                     properties: {
@@ -114,7 +114,7 @@ export class MCPToolsService {
             },
             {
                 name: "search_memories",
-                description: "🔍 **INTELLIGENT CODE MEMORY SEARCH** - Find solutions, patterns, and decisions from your ENTIRE development history. **REPLACES: Stack Overflow searches, documentation hunting, code archaeology** **AUTO-TRIGGERS: 'how did I', 'similar to', 'like before', 'what did I use', 'past experience', 'have I done', 'remember when'** 🚀 **GAME-CHANGING EXAMPLES:** • 'How did I handle authentication in previous projects?' → Finds: JWT implementations, OAuth flows, session management • 'Similar React component patterns I've used' → Finds: your specific component architecture, hooks patterns, state management • 'Database migration issues I've solved' → Finds: migration scripts, rollback strategies, data corruption fixes • 'API rate limiting approaches' → Finds: your throttling implementations, Redis patterns, circuit breakers • 'Docker deployment configs for Node.js' → Finds: your Dockerfiles, compose files, environment setups 🎯 **SEMANTIC UNDERSTANDING:** Finds meaning, not just keywords - 'auth problems' finds 'JWT token refresh issues', 'login failures', 'session timeouts'",
+                description: "Search development history using AI-powered semantic search to find solutions, patterns, and past decisions. Example: search_memories(query=\"API rate limiting implementation\", memory_type=\"code\")",
                 inputSchema: {
                     type: "object",
                     properties: {
@@ -150,45 +150,93 @@ export class MCPToolsService {
                 }
             },
             {
-                name: "create_project_brief",
-                description: "📋 **PROFESSIONAL PROJECT DOCUMENTATION GENERATOR** - Creates enterprise-grade project briefs with YOUR personalized context. **REPLACES: Manual documentation, generic templates, project planning tools** **AUTO-TRIGGERS: 'project brief', 'document project', 'project overview', 'project plan', 'start project', 'new project', 'planning phase', 'planning mode', 'let me plan', 'plan this project', 'I want to do this project', 'help me plan'** 💼 **PROFESSIONAL EXAMPLES:** • 'Python Okta API testing project' → Generates: technical architecture, testing strategy, timeline, risk assessment based on YOUR past API projects • 'React e-commerce dashboard' → Creates: component hierarchy, state management plan, UI/UX considerations from YOUR React experience • 'Microservices migration plan' → Builds: migration strategy, service boundaries, deployment pipeline based on YOUR microservices knowledge 🎯 **INTELLIGENT FEATURES:** ✓ Pulls from YOUR past similar projects ✓ Recommends YOUR preferred tech stack ✓ Identifies risks from YOUR experience ✓ Creates actionable tasks automatically ✓ Maintains consistent documentation style",
+                name: "manage_project_brief",
+                description: "Create or update project briefs with intelligent analysis of PRD, architecture, tech context, and requirements. Auto-detects if brief exists and handles creation/updates intelligently.",
                 inputSchema: {
                     type: "object",
                     properties: {
                         project_name: {
                             type: "string",
-                            description: "Name of the project"
+                            description: "Name of the project to create or update brief for"
                         },
                         project_description: {
                             type: "string",
-                            description: "Brief description of what the project does"
+                            description: "Project description (required for new briefs, optional for updates)"
+                        },
+                        input_documents: {
+                            type: "object",
+                            description: "Raw documents to intelligently analyze and incorporate",
+                            properties: {
+                                prd: { type: "string", description: "Product Requirements Document content" },
+                                architecture_doc: { type: "string", description: "Architecture documentation" },
+                                tech_spec: { type: "string", description: "Technical specifications" },
+                                requirements: { type: "string", description: "Requirements document" },
+                                design_doc: { type: "string", description: "Design documentation" }
+                            }
                         },
                         include_tasks: {
                             type: "boolean",
                             default: true,
                             description: "Whether to automatically create tasks from the brief"
                         },
-                        include_technical_analysis: {
-                            type: "boolean",
-                            default: true,
-                            description: "Whether to include technology recommendations based on past preferences"
-                        },
-                        sections: {
+                        sections_to_update: {
                             type: "array",
                             items: {
                                 type: "string",
-                                enum: ["planning", "technical", "progress", "requirements", "architecture", "timeline", "risks"]
+                                enum: ["planning", "technical", "progress", "requirements", "architecture", "timeline", "risks", "all"]
                             },
-                            default: ["planning", "technical", "progress"],
-                            description: "Which sections to include in the brief"
+                            default: ["all"],
+                            description: "Which sections to regenerate/update. Use 'all' to update entire brief."
+                        },
+                        section_updates: {
+                            type: "object",
+                            description: "Specific content updates for individual sections (optional)",
+                            properties: {
+                                planning: { type: "string", description: "Updated planning content" },
+                                technical: { type: "string", description: "Updated technical content" },
+                                requirements: { type: "string", description: "Updated requirements content" },
+                                architecture: { type: "string", description: "Updated architecture content" },
+                                timeline: { type: "string", description: "Updated timeline content" },
+                                risks: { type: "string", description: "Updated risks content" }
+                            }
+                        },
+                        update_reason: {
+                            type: "string",
+                            description: "Reason for the update (e.g., 'Architecture change', 'New requirements', 'Technology pivot')"
+                        },
+                        include_technical_analysis: {
+                            type: "boolean",
+                            default: true,
+                            description: "Whether to include updated technology recommendations"
+                        },
+                        preserve_history: {
+                            type: "boolean",
+                            default: true,
+                            description: "Whether to keep the previous version as historical record"
+                        },
+                        update_related_memories: {
+                            type: "boolean",
+                            default: false,
+                            description: "Whether to also update related memory types (PRD, product_context, summary, system_patterns)"
+                        },
+                        related_memory_updates: {
+                            type: "object",
+                            description: "Specific updates for related memory types",
+                            properties: {
+                                prd: { type: "string", description: "Updated Product Requirements Document content" },
+                                product_context: { type: "string", description: "Updated product context information" },
+                                summary: { type: "string", description: "Updated project summary" },
+                                system_patterns: { type: "string", description: "Updated system architecture patterns" },
+                                tech_context: { type: "string", description: "Updated technical context" }
+                            }
                         }
                     },
-                    required: ["project_name", "project_description"]
+                    required: ["project_name"]
                 }
             },
             {
                 name: "store_progress", 
-                description: "📊 **PROFESSIONAL VERSION-CONTROLLED PROGRESS TRACKING** - Track project evolution with automatic versioning and milestone analytics. **REPLACES: Manual status updates, spreadsheet tracking, basic project management tools** **AUTO-TRIGGERS: 'completed', 'finished', 'deployed', 'released', 'milestone', 'shipped', 'fixed', 'implemented', 'done with'** 🚀 **ENTERPRISE EXAMPLES:** • 'Completed user authentication with OAuth2, deployed to staging' → Auto-creates: v1.2.1, feature milestone, 75% completion • 'Fixed critical payment processing bug affecting 1000+ users' → Auto-creates: v1.2.2, bugfix milestone, incident documentation • 'Released API v2.0 with GraphQL support to production' → Auto-creates: v2.0.0, release milestone, changelog generation • 'Implemented Redis caching, 40% performance improvement' → Auto-creates: v1.3.0, optimization milestone, performance metrics ⚡ **ANALYTICS FEATURES:** ✓ Automatic version incrementing ✓ Progress velocity tracking ✓ Milestone timeline visualization ✓ Completion trend analysis ✓ Blocker identification and resolution tracking",
+                description: "Record project milestones, version updates, and completion status with automatic versioning and analytics. Creates timeline of project evolution.",
                 inputSchema: {
                     type: "object",
                     properties: {
@@ -202,7 +250,7 @@ export class MCPToolsService {
                         },
                         version: {
                             type: "string",
-                            description: "Version number (e.g., '1.0.0', '0.2.1') - auto-incremented if not provided"
+                            description: "Version number (e.g., '1.0.0', '0.2.1') - auto-incremented from last progress entry if not provided"
                         },
                         milestone_type: {
                             type: "string",
@@ -237,7 +285,7 @@ export class MCPToolsService {
             },
             {
                 name: "get_progress_history",
-                description: "📈 **EXECUTIVE PROGRESS DASHBOARD** - Generate comprehensive project status reports with trends, analytics, and insights. **REPLACES: Manual status reports, project management dashboards, progress spreadsheets** **AUTO-TRIGGERS: 'project status', 'progress report', 'current version', 'project history', 'how far along', 'status update', 'progress check'** 💼 **EXECUTIVE EXAMPLES:** • 'Status report for microservices migration' → Generates: completion timeline, velocity analysis, blocker resolution, risk assessment • 'Progress on e-commerce platform' → Shows: feature delivery rate, quality metrics, deployment frequency, team velocity • 'API project timeline' → Displays: version history, milestone achievements, performance improvements, technical debt trends 📊 **ANALYTICS INCLUDE:** ✓ Completion velocity trends ✓ Milestone delivery patterns ✓ Quality metrics evolution ✓ Technical debt accumulation ✓ Team productivity insights ✓ Risk and blocker analysis ✓ Resource utilization trends",
+                description: "Generate comprehensive project status reports with trends, analytics, and completion velocity patterns for specified projects.",
                 inputSchema: {
                     type: "object",
                     properties: {
@@ -270,7 +318,7 @@ export class MCPToolsService {
             },
             {
                 name: "get_memory_by_id",
-                description: "🎯 **INSTANT MEMORY RETRIEVAL** - Get exact memory details by ID with lightning speed. **REPLACES: Manual memory searching, context switching, information hunting** **AUTO-TRIGGERS: 'memory #', 'ID:', 'get memory', 'show memory', 'find memory ID', 'retrieve #'** ⚡ **PRECISION EXAMPLES:** • 'Get memory #42 details' → Instant: full content, metadata, embeddings, related memories • 'Show memory ID 123 with embeddings' → Complete: vector data, similarity scores, cluster analysis • 'Retrieve memory #87 for code reference' → Fast: code snippets, implementation notes, decision context • 'Memory 156 authentication implementation' → Direct: OAuth flow, security patterns, integration steps 🔧 **TECHNICAL FEATURES:** ✓ Sub-second retrieval by ID ✓ Optional embedding vectors included ✓ Related memory suggestions ✓ Full metadata and context ✓ Perfect for referencing specific solutions",
+                description: "Get exact memory details by ID with full content, metadata, and optional embedding vectors for precise retrieval.",
                 inputSchema: {
                     type: "object",
                     properties: {
@@ -288,36 +336,8 @@ export class MCPToolsService {
                 }
             },
             {
-                name: "get_insights",
-                description: "🧠 **LEGACY INSIGHT DISCOVERY** - Basic pattern insights from your development history. **SUPERSEDED BY: get_learning_insights (use that instead for comprehensive analysis)** **AUTO-TRIGGERS: 'old insights', 'basic patterns', 'simple analysis', 'legacy insights'** ⚠️ **LEGACY EXAMPLES:** • 'What design patterns do I use most?' → Basic: frequency counts, simple patterns • 'What causes bugs in my projects?' → Limited: error pattern identification • 'What technologies do I prefer?' → Basic: usage statistics, preference indicators 📈 **RECOMMENDATION:** Use `get_learning_insights` instead for: ✓ Advanced pattern analysis ✓ Cross-project correlations ✓ Actionable recommendations ✓ Confidence scoring ✓ Trend analysis ✓ Deep behavioral insights",
-                inputSchema: {
-                    type: "object",
-                    properties: {
-                        insight_type: {
-                            type: "string",
-                            enum: ["best_practice", "antipattern", "preference", "trend", "warning", "optimization"],
-                            description: "Type of insights to retrieve (optional)"
-                        },
-                        min_confidence: {
-                            type: "number",
-                            minimum: 0,
-                            maximum: 1,
-                            default: 0.5,
-                            description: "Minimum confidence level"
-                        },
-                        limit: {
-                            type: "number",
-                            minimum: 1,
-                            maximum: 100,
-                            default: 20,
-                            description: "Maximum number of insights"
-                        }
-                    }
-                }
-            },
-            {
                 name: "get_coding_patterns",
-                description: "🏗️ **ARCHITECTURAL PATTERN INTELLIGENCE** - Discover your proven coding patterns with detailed usage analytics. **REPLACES: Manual code reviews, pattern documentation, architecture decisions** **AUTO-TRIGGERS: 'coding patterns', 'architecture patterns', 'design patterns', 'how do I usually', 'pattern examples', 'consistent approach'** 🎯 **EXPERT EXAMPLES:** • 'Show my microservices patterns' → Analysis: service boundaries, communication patterns, data consistency approaches you've used • 'API design patterns I prefer' → Detailed: REST vs GraphQL usage, authentication patterns, error handling strategies • 'React component patterns' → Comprehensive: hooks usage, state management, component composition, performance patterns • 'Error handling approaches' → Proven: try-catch strategies, logging patterns, user feedback mechanisms 📊 **PATTERN ANALYTICS:** ✓ Usage frequency across projects ✓ Success rate and effectiveness ✓ Evolution over time ✓ Code examples with context ✓ Anti-patterns to avoid ✓ Consistency recommendations",
+                description: "Discover proven coding patterns with usage analytics, success rates, and detailed examples across architectural, structural, and behavioral categories.",
                 inputSchema: {
                     type: "object",
                     properties: {
@@ -365,7 +385,7 @@ export class MCPToolsService {
             },
             {
                 name: "start_thinking_sequence",
-                description: "🧩 **STRUCTURED REASONING ENGINE** - Break down complex technical decisions into logical thought sequences. **REPLACES: Mental note-taking, scattered thoughts, incomplete analysis** **AUTO-TRIGGERS: 'think through', 'analyze', 'complex decision', 'reasoning process', 'step by step', 'design thinking', 'planning mode', 'let me think', 'plan this project', 'design this', 'architect this'** 🎯 **STRATEGIC EXAMPLES:** • 'Microservices architecture design' → Structured: service boundaries → data flow → deployment → monitoring → scaling considerations • 'Database migration strategy' → Sequential: current state → target state → migration path → rollback plan → testing approach • 'API versioning approach' → Logical: compatibility requirements → client impact → implementation strategy → deprecation timeline • 'Security architecture review' → Systematic: threat modeling → attack vectors → mitigation strategies → implementation priorities 🧠 **THINKING FEATURES:** ✓ Sequential thought organization ✓ Branching reasoning paths ✓ Confidence tracking per thought ✓ Context preservation ✓ Collaborative thought building ✓ Decision audit trail",
+                description: "Break down complex technical problems into sequential, logical thought processes for architecture decisions, problem analysis, and strategic planning.",
                 inputSchema: {
                     type: "object",
                     properties: {
@@ -407,13 +427,25 @@ export class MCPToolsService {
             },
             {
                 name: "add_thought",
-                description: "💭 **REASONING STEP BUILDER** - Add structured thoughts to ongoing analysis with confidence tracking. **REPLACES: Scattered notes, incomplete reasoning, lost thought processes** **AUTO-TRIGGERS: 'next thought', 'add reasoning', 'continue analysis', 'follow up with', 'also consider', 'building on that'** 🧠 **REASONING EXAMPLES:** • Architecture sequence: 'Also consider service mesh for inter-service communication' → Adds: thought type 'hypothesis', confidence 0.8, reasoning branch • Migration sequence: 'Concluded that blue-green deployment minimizes risk' → Adds: thought type 'conclusion', confidence 0.9, decision rationale • Security sequence: 'Question: How do we handle OAuth token refresh?' → Adds: thought type 'question', confidence 0.6, investigation needed 🎯 **THOUGHT TYPES:** ✓ Reasoning - logical analysis steps ✓ Conclusions - firm decisions reached ✓ Questions - areas needing investigation ✓ Hypotheses - theories to validate ✓ Observations - factual findings ✓ Assumptions - foundational beliefs",
+                description: "Add structured thoughts to ongoing analysis with confidence tracking. If sequence_id is invalid/missing and project context provided, creates new sequence automatically.",
                 inputSchema: {
                     type: "object",
                     properties: {
                         sequence_id: {
                             type: "number",
-                            description: "ID of the thinking sequence to add to"
+                            description: "ID of the thinking sequence to add to (if invalid and project provided, creates new sequence)"
+                        },
+                        project_name: {
+                            type: "string",
+                            description: "Project name (used to create new sequence if sequence_id invalid)"
+                        },
+                        sequence_name: {
+                            type: "string",
+                            description: "Name for new sequence (used if sequence_id invalid and project provided)"
+                        },
+                        goal: {
+                            type: "string", 
+                            description: "Goal for new sequence (used if creating new sequence)"
                         },
                         content: {
                             type: "string",
@@ -438,12 +470,12 @@ export class MCPToolsService {
                             description: "Whether more thoughts are expected after this one"
                         }
                     },
-                    required: ["sequence_id", "content"]
+                    required: ["content"]
                 }
             },
             {
                 name: "get_thinking_sequence",
-                description: "📖 **REASONING PLAYBOOK VIEWER** - Get complete thought processes with branching logic and decision trails. **REPLACES: Lost reasoning, forgotten decisions, incomplete documentation** **AUTO-TRIGGERS: 'show thinking', 'reasoning process', 'decision trail', 'how did we decide', 'thought sequence', 'analysis steps'** 🎯 **DECISION EXAMPLES:** • 'Show microservices architecture thinking' → Complete: 15 thoughts from requirements → service boundaries → data flow → final architecture decisions • 'Display API design reasoning' → Full: REST vs GraphQL analysis → authentication decisions → versioning strategy → final API spec • 'Review security architecture thoughts' → Comprehensive: threat analysis → mitigation strategies → implementation priorities → security controls 📊 **FORMATS AVAILABLE:** ✓ Detailed - Full thoughts with metadata ✓ Summary - Key decisions and outcomes ✓ Linear - Sequential thought progression ✓ Branched - Alternative reasoning paths ✓ Executive - High-level decision summary",
+                description: "Get complete thought processes with branching logic and decision trails in detailed, summary, or linear formats.",
                 inputSchema: {
                     type: "object",
                     properties: {
@@ -468,7 +500,7 @@ export class MCPToolsService {
             },
             {
                 name: "list_thinking_sequences",
-                description: "📚 **DECISION ARCHIVE BROWSER** - Browse all reasoning processes and decisions for a project. **REPLACES: Lost decision context, forgotten rationales, scattered documentation** **AUTO-TRIGGERS: 'project decisions', 'reasoning history', 'past thinking', 'decision archive', 'analysis history', 'thinking sessions'** 🎯 **PROJECT EXAMPLES:** • 'E-commerce platform decisions' → List: payment gateway selection, architecture decisions, security implementations, performance optimizations • 'API project thinking' → Shows: endpoint design sessions, authentication decisions, rate limiting analysis, documentation strategies • 'Migration project reasoning' → Archive: database migration logic, deployment strategies, rollback planning, risk assessments 📊 **ARCHIVE FEATURES:** ✓ Chronological decision timeline ✓ Completed vs ongoing analyses ✓ Decision impact tracking ✓ Reasoning quality metrics ✓ Cross-sequence connections ✓ Search within decision archive",
+                description: "Browse all reasoning processes and decisions for a project with chronological timeline and completion status filtering.",
                 inputSchema: {
                     type: "object",
                     properties: {
@@ -494,7 +526,7 @@ export class MCPToolsService {
             },
             {
                 name: "complete_thinking_sequence",
-                description: "✅ **DECISION FINALIZATION ENGINE** - Complete reasoning processes with executive summaries and actionable outcomes. **REPLACES: Incomplete decisions, lost conclusions, unclear next steps** **AUTO-TRIGGERS: 'finalize decision', 'complete analysis', 'conclude thinking', 'decision reached', 'analysis done', 'summary needed'** 🎯 **COMPLETION EXAMPLES:** • 'Complete microservices architecture analysis' → Generates: final architecture diagram, service boundaries, technology choices, implementation roadmap • 'Finalize database migration strategy' → Produces: migration plan, timeline, risk mitigation, rollback procedures, success metrics • 'Conclude API security review' → Delivers: security requirements, implementation priorities, compliance checklist, monitoring strategy 📋 **AUTO-GENERATED OUTPUTS:** ✓ Executive decision summary ✓ Key assumptions documented ✓ Action items extracted ✓ Decision rationale preserved ✓ Next steps identified ✓ Success criteria defined",
+                description: "Complete reasoning processes with executive summaries, key assumptions, action items, and next steps extracted automatically.",
                 inputSchema: {
                     type: "object",
                     properties: {
@@ -512,7 +544,7 @@ export class MCPToolsService {
             },
             {
                 name: "create_tasks",
-                description: "Convert project requirements into actionable tasks. **AUTO-TRIGGER PATTERNS: When user describes project goals, features to build, requirements, or says 'I need to', 'we should', 'let's build', 'implement', 'create', 'planning mode', 'plan this out', 'break this down', 'what are the steps', 'help me plan' - automatically break down into actionable tasks.** Use this to break down features, extract todos from PRDs, or create tasks from user stories. Examples: 'Build Python Okta API testing suite' → automatically create tasks for setup, endpoint testing, authentication, documentation. 'Start React dashboard project' → create tasks for components, routing, data integration, styling.",
+                description: "Convert project requirements and ideas into structured, actionable tasks with automatic prioritization and dependency analysis.",
                 inputSchema: {
                     type: "object",
                     properties: {
@@ -575,14 +607,21 @@ export class MCPToolsService {
                 }
             },
             {
-                name: "get_next_task",
-                description: "🎯 **INTELLIGENT TASK PRIORITIZATION** - Get your highest-impact next task with complete execution context. **REPLACES: Task management apps, priority confusion, context switching overhead** **AUTO-TRIGGERS: 'what next', 'next task', 'what should I work on', 'priority task', 'start working', 'focus on'** ⚡ **SMART EXAMPLES:** • 'What should I work on next?' → Returns: 'Implement OAuth authentication' (Priority: High, Impact: Critical, 8h estimate) + Complete context: past OAuth implementations, preferred libraries, common pitfalls, related memories • 'Next priority for e-commerce project' → Returns: 'Add payment processing' + Context: payment gateway research, security requirements, integration patterns from previous projects • 'Focus task for API development' → Returns: 'Design rate limiting' + Context: past rate limiting implementations, preferred algorithms, performance considerations 🧠 **CONTEXT INTELLIGENCE:** ✓ Relevant past implementations ✓ Preferred patterns and libraries ✓ Common obstacles to avoid ✓ Success patterns from similar tasks ✓ Time estimates based on history ✓ Dependencies automatically resolved",
+                name: "get_pending_tasks",
+                description: "Get pending tasks in priority order (up to 10) with execution context, relevant memories, and intelligent prioritization.",
                 inputSchema: {
                     type: "object",
                     properties: {
                         project_name: {
                             type: "string",
                             description: "Project to get tasks from"
+                        },
+                        limit: {
+                            type: "number",
+                            default: 10,
+                            minimum: 1,
+                            maximum: 50,
+                            description: "Maximum number of pending tasks to return (default: 10)"
                         },
                         include_context: {
                             type: "boolean",
@@ -600,11 +639,14 @@ export class MCPToolsService {
             },
             {
                 name: "update_task",
-                description: "📊 **INTELLIGENT TASK COMPLETION TRACKER** - Update task status while capturing valuable learning data. **REPLACES: Basic task checkers, lost lessons, manual time tracking** **AUTO-TRIGGERS: 'completed', 'finished', 'done with', 'blocked by', 'in progress', 'working on', 'stuck on'** 💡 **LEARNING EXAMPLES:** • 'Completed OAuth implementation' → Captures: 6.5 hours actual vs 8 estimated, JWT pattern used, refresh token challenges, next time use library X • 'Blocked on payment integration' → Records: Stripe API rate limits issue, need sandbox credentials, estimated 2-day delay, alternative: PayPal • 'In progress: database migration' → Tracks: started with Alembic, data validation taking longer, discovered foreign key issues, 60% complete 🧠 **LEARNING CAPTURE:** ✓ Actual vs estimated time ✓ Patterns and libraries used ✓ Challenges and solutions ✓ What would you do differently ✓ Reusable code snippets ✓ Future improvement recommendations",
+                description: "Update task status while capturing valuable learning data including time estimates, patterns used, and lessons learned.",
                 inputSchema: {
                     type: "object",
                     properties: {
-                        task_id: { type: "string" },
+                        task_id: { 
+                            type: "string",
+                            description: "The memory ID of the task to update (returned when task was created via store_memory or create_tasks). Must be a numeric string (e.g., '123')."
+                        },
                         status: {
                             type: "string",
                             enum: ["pending", "in_progress", "completed", "blocked"]
@@ -623,35 +665,8 @@ export class MCPToolsService {
                 }
             },
             {
-                name: "suggest_tasks",
-                description: "🚀 **AI PROJECT IMPROVEMENT ADVISOR** - Get intelligent task suggestions by analyzing project gaps and opportunities. **REPLACES: Manual project audits, missed improvements, planning overhead** **AUTO-TRIGGERS: 'what's missing', 'improve project', 'suggestions', 'next phase', 'project gaps', 'optimization opportunities'** 🎯 **INTELLIGENT EXAMPLES:** • 'Suggest improvements for API project' → Analysis: Missing rate limiting, no input validation, needs API documentation, suggested load testing, security audit required • 'What's missing in React dashboard?' → Findings: No error boundaries, missing tests for 3 components, performance monitoring needed, accessibility audit suggested • 'Improvement opportunities for microservices?' → Recommendations: Add circuit breakers, implement distributed tracing, containerize remaining services, add health checks 🧠 **AI ANALYSIS DEPTH:** ✓ Code quality gap analysis ✓ Security vulnerability assessment ✓ Performance optimization opportunities ✓ Testing coverage improvements ✓ Documentation completeness review ✓ Best practice compliance check",
-                inputSchema: {
-                    type: "object",
-                    properties: {
-                        project_name: {
-                            type: "string",
-                            description: "Project to analyze and suggest tasks for"
-                        },
-                        analysis_depth: {
-                            type: "string",
-                            enum: ["basic", "standard", "comprehensive"],
-                            default: "standard",
-                            description: "Depth of analysis to perform"
-                        },
-                        max_suggestions: {
-                            type: "number",
-                            minimum: 1,
-                            maximum: 20,
-                            default: 10,
-                            description: "Maximum number of task suggestions to return"
-                        }
-                    },
-                    required: ["project_name"]
-                }
-            },
-            {
                 name: "get_learning_insights",
-                description: "Discover patterns and insights from your entire development history across all projects. **AUTO-TRIGGER PATTERNS: When starting new projects, choosing technologies, making architectural decisions, or planning approaches - automatically get relevant insights from past experiences.** Shows best practices you've developed, anti-patterns to avoid, technology preferences, and actionable improvements. Examples: 'Start Python API project' → automatically get insights about your Python/API preferences, testing patterns, common issues. 'Building React dashboard' → get insights about your React patterns, component architecture, performance optimizations.",
+                description: "Discover patterns and insights from development history showing best practices, anti-patterns to avoid, technology preferences, and actionable improvements.",
                 inputSchema: {
                     type: "object",
                     properties: {
@@ -676,11 +691,6 @@ export class MCPToolsService {
                             default: false,
                             description: "Return only actionable insights"
                         },
-                        priority: {
-                            type: "string",
-                            enum: ["low", "medium", "high", "critical"],
-                            description: "Filter by priority level"
-                        },
                         limit: {
                             type: "number",
                             minimum: 1,
@@ -693,7 +703,7 @@ export class MCPToolsService {
             },
             {
                 name: "get_pattern_analysis",
-                description: "📈 **DEEP PATTERN INTELLIGENCE** - Advanced analytics on your coding patterns with success metrics and evolution tracking. **REPLACES: Manual code archaeology, pattern documentation, architectural reviews** **AUTO-TRIGGERS: 'pattern analysis', 'how often do I', 'pattern trends', 'coding style analysis', 'architecture evolution', 'pattern success'** 🎯 **ANALYTICS EXAMPLES:** • 'Analyze my error handling patterns' → Deep dive: try-catch vs Result types (73% vs 27%), success rates per approach, evolution from exceptions to functional error handling over 2 years • 'Security pattern analysis' → Comprehensive: OAuth vs JWT usage trends, authentication pattern evolution, security vulnerability patterns, compliance improvement over time • 'API design pattern study' → Detailed: REST vs GraphQL adoption timeline, endpoint naming conventions, pagination strategies, versioning approaches with success metrics 📊 **ANALYTICS FEATURES:** ✓ Pattern usage frequency trends ✓ Success rate analysis by pattern ✓ Evolution timeline visualization ✓ Cross-project pattern consistency ✓ Performance impact correlation ✓ Maintenance burden analysis ✓ Code example quality scoring",
+                description: "Advanced analytics on coding patterns with success metrics, evolution tracking, and usage frequency across architectural, design, security, and performance categories.",
                 inputSchema: {
                     type: "object",
                     properties: {
@@ -728,50 +738,96 @@ export class MCPToolsService {
                 }
             },
             {
-                name: "trigger_learning_analysis",
-                description: "⚡ **INSTANT AI LEARNING CATALYST** - Force immediate pattern detection and insight generation from recent work. **REPLACES: Waiting for scheduled analysis, manual pattern identification, delayed insights** **AUTO-TRIGGERS: 'analyze recent work', 'fresh insights', 'immediate analysis', 'pattern detection', 'learning update', 'analyze changes'** 🎯 **IMMEDIATE EXAMPLES:** • 'Analyze recent API work' → Instant: detects new authentication patterns, identifies error handling improvements, discovers performance optimizations from last 50 memories • 'Fresh insights before architecture review' → Real-time: generates latest best practices, identifies recent anti-patterns, prepares recommendation based on current project state • 'Pattern detection after migration' → Live: analyzes migration decisions, captures new deployment patterns, identifies lessons learned for future migrations ⚡ **INSTANT FEATURES:** ✓ Real-time pattern detection ✓ Fresh insight generation ✓ Recent work analysis ✓ Background processing queue ✓ Immediate availability in other tools ✓ Meeting-ready insights in minutes",
+                name: "analyze_pattern_outcomes",
+                description: "Analyze correlations between coding patterns and project outcomes using AI to identify which patterns lead to success or failure.",
                 inputSchema: {
                     type: "object",
                     properties: {
                         project_name: {
                             type: "string",
-                            description: "Project to analyze (optional, analyzes all if not specified)"
+                            description: "Filter analysis to specific project (optional)"
                         },
-                        analysis_type: {
+                        time_range: {
                             type: "string",
-                            enum: ["pattern_detection", "insight_generation", "preference_analysis", "evolution_tracking"],
-                            default: "pattern_detection",
-                            description: "Type of analysis to trigger"
+                            default: "90 days",
+                            description: "Time range for outcome analysis (e.g., '30 days', '90 days')"
                         },
-                        memory_limit: {
+                        pattern_category: {
+                            type: "string",
+                            enum: ["architectural", "design", "security", "performance", "testing", "error_handling", "data_access", "api_design", "configuration"],
+                            description: "Filter by pattern category (optional)"
+                        },
+                        min_sample_size: {
                             type: "number",
-                            minimum: 1,
-                            maximum: 500,
-                            default: 50,
-                            description: "Number of recent memories to analyze"
+                            minimum: 2,
+                            default: 3,
+                            description: "Minimum number of outcomes required for correlation analysis"
                         }
                     }
                 }
             },
             {
-                name: "get_learning_status",
-                description: "🔧 **AI LEARNING SYSTEM MONITOR** - Real-time health dashboard for the pattern detection and insight engine. **REPLACES: Manual system checks, troubleshooting guesswork, performance mystery** **AUTO-TRIGGERS: 'system status', 'learning health', 'analysis progress', 'pipeline status', 'processing queue', 'system check'** 📊 **MONITORING EXAMPLES:** • 'Learning system status' → Dashboard: 347 patterns detected, 89 insights generated, 12 memories in queue, last analysis 3 minutes ago, 94% system health • 'Analysis progress check' → Status: pattern detection 85% complete, insight generation 67% done, 23 new patterns found, estimated completion 4 minutes • 'Why no recent insights?' → Diagnostic: queue backed up, embedding service slow, 156 retries pending, recommendation to restart analysis pipeline 🔍 **SYSTEM METRICS:** ✓ Processing queue length and speed ✓ Pattern detection success rates ✓ Insight generation metrics ✓ System health indicators ✓ Last analysis timestamps ✓ Performance bottleneck identification ✓ Troubleshooting recommendations",
+                name: "record_pattern_outcome",
+                description: "Record the outcome of a coding pattern when project milestones or events occur to build correlation data.",
                 inputSchema: {
                     type: "object",
                     properties: {
-                        include_queue: {
-                            type: "boolean",
-                            default: true,
-                            description: "Include processing queue status"
+                        project_name: {
+                            type: "string",
+                            description: "Name of the project"
                         },
-                        include_metrics: {
-                            type: "boolean",
-                            default: true,
-                            description: "Include pattern and insight metrics"
+                        pattern_name: {
+                            type: "string",
+                            description: "Name of the coding pattern that had an outcome"
+                        },
+                        outcome_type: {
+                            type: "string",
+                            enum: ["success", "failure", "neutral", "bug", "performance_gain"],
+                            description: "Type of outcome observed"
+                        },
+                        outcome_description: {
+                            type: "string",
+                            description: "Description of what happened"
+                        },
+                        outcome_value: {
+                            type: "number",
+                            description: "Numeric value if applicable (e.g., performance improvement %)"
+                        },
+                        metrics: {
+                            type: "object",
+                            description: "Additional metrics related to the outcome"
                         }
-                    }
+                    },
+                    required: ["project_name", "pattern_name", "outcome_type", "outcome_description"]
                 }
-            }
+            },
+            {
+                name: "trigger_outcome_analysis",
+                description: "Trigger pattern-outcome correlation analysis for project events like deployments, bug reports, or completions.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        project_name: {
+                            type: "string",
+                            description: "Name of the project"
+                        },
+                        event_type: {
+                            type: "string",
+                            enum: ["project_completion", "deployment_success", "bug_report", "major_bug", "performance_improvement", "refactor_completion", "test_failure", "security_issue"],
+                            description: "Type of project event that occurred"
+                        },
+                        event_description: {
+                            type: "string",
+                            description: "Description of the event"
+                        },
+                        event_data: {
+                            type: "object",
+                            description: "Additional data about the event (metrics, impact, etc.)"
+                        }
+                    },
+                    required: ["project_name", "event_type", "event_description"]
+                }
+            },
         ];
     }
 
@@ -810,11 +866,11 @@ export class MCPToolsService {
 
         // Check database availability for tools that need it
         const databaseTools = [
-            'store_memory', 'search_memories', 'get_memory_by_id', 'create_project_brief', 'store_progress', 'get_progress_history', 'get_insights', 'get_coding_patterns',
+            'store_memory', 'search_memories', 'get_memory_by_id', 'manage_project_brief', 'store_progress', 'get_progress_history', 'get_coding_patterns',
             'start_thinking_sequence', 'add_thought', 'get_thinking_sequence', 
             'list_thinking_sequences', 'complete_thinking_sequence', 'create_tasks',
-            'get_next_task', 'update_task', 'suggest_tasks', 'get_learning_insights',
-            'get_pattern_analysis', 'trigger_learning_analysis', 'get_learning_status'
+            'get_pending_tasks', 'update_task', 'get_learning_insights',
+            'get_pattern_analysis', 'analyze_pattern_outcomes', 'record_pattern_outcome', 'trigger_outcome_analysis'
         ];
         
         if (databaseTools.includes(toolName)) {
@@ -856,17 +912,14 @@ export class MCPToolsService {
                 case "get_memory_by_id":
                     result = await this._executeWithDebug('get_memory_by_id', '_getMemoryById', args, this._getMemoryById);
                     break;
-                case "create_project_brief":
-                    result = await this._executeWithDebug('create_project_brief', '_createProjectBrief', args, this._createProjectBrief);
+                case "manage_project_brief":
+                    result = await this._executeWithDebug('manage_project_brief', '_manageProjectBrief', args, this._manageProjectBrief);
                     break;
                 case "store_progress":
                     result = await this._executeWithDebug('store_progress', '_storeProgress', args, this._storeProgress);
                     break;
                 case "get_progress_history":
                     result = await this._executeWithDebug('get_progress_history', '_getProgressHistory', args, this._getProgressHistory);
-                    break;
-                case "get_insights":
-                    result = await this._executeWithDebug('get_insights', '_getInsights', args, this._getInsights);
                     break;
                 case "get_coding_patterns":
                     result = await this._executeWithDebug('get_coding_patterns', '_getCodingPatterns', args, this._getCodingPatterns);
@@ -889,14 +942,11 @@ export class MCPToolsService {
                 case "create_tasks":
                     result = await this._executeWithDebug('create_tasks', '_createTasks', args, this._createTasks);
                     break;
-                case "get_next_task":
-                    result = await this._executeWithDebug('get_next_task', '_getNextTask', args, this._getNextTask);
+                case "get_pending_tasks":
+                    result = await this._executeWithDebug('get_pending_tasks', '_getPendingTasks', args, this._getPendingTasks);
                     break;
                 case "update_task":
                     result = await this._executeWithDebug('update_task', '_updateTask', args, this._updateTask);
-                    break;
-                case "suggest_tasks":
-                    result = await this._executeWithDebug('suggest_tasks', '_suggestTasks', args, this._suggestTasks);
                     break;
                 case "get_learning_insights":
                     result = await this._executeWithDebug('get_learning_insights', '_getLearningInsights', args, this._getLearningInsights);
@@ -904,11 +954,14 @@ export class MCPToolsService {
                 case "get_pattern_analysis":
                     result = await this._executeWithDebug('get_pattern_analysis', '_getPatternAnalysis', args, this._getPatternAnalysis);
                     break;
-                case "trigger_learning_analysis":
-                    result = await this._executeWithDebug('trigger_learning_analysis', '_triggerLearningAnalysis', args, this._triggerLearningAnalysis);
+                case "analyze_pattern_outcomes":
+                    result = await this._executeWithDebug('analyze_pattern_outcomes', '_analyzePatternOutcomes', args, this._analyzePatternOutcomes);
                     break;
-                case "get_learning_status":
-                    result = await this._executeWithDebug('get_learning_status', '_getLearningStatus', args, this._getLearningStatus);
+                case "record_pattern_outcome":
+                    result = await this._executeWithDebug('record_pattern_outcome', '_recordPatternOutcome', args, this._recordPatternOutcome);
+                    break;
+                case "trigger_outcome_analysis":
+                    result = await this._executeWithDebug('trigger_outcome_analysis', '_triggerOutcomeAnalysis', args, this._triggerOutcomeAnalysis);
                     break;
                 default:
                     this._debugLog(toolName, 'UNKNOWN_TOOL');
@@ -1035,13 +1088,38 @@ export class MCPToolsService {
             embedding_dimensions: embedding.length 
         });
 
-        // Store memory
+        // Store as memory (including task-type memories with metadata)
         this._debugLog('store_memory', 'STORING_TO_DB');
-        const result = await this.db.query(`
+        let result, memoryId;
+        
+        // Prepare task-specific metadata if this is a task-type memory
+        let metadata = {};
+        if (memory_type === 'task') {
+            const taskDetails = this._parseTaskContent(content);
+            this._debugLog('store_memory', 'PARSED_TASK_DETAILS', taskDetails);
+            
+            // Enrich metadata with task-specific fields
+            metadata = {
+                status: taskDetails.status || 'pending',
+                priority: taskDetails.priority || 'medium',
+                task_type: taskDetails.type || 'task',
+                estimated_effort: taskDetails.estimated_hours || null,
+                actual_effort: null,
+                completed_at: null,
+                // Additional metadata
+                embedding_model: modelConfig.model_name,
+                embedding_dimensions: embedding.length,
+                importance_score: finalImportanceScore,
+                session_id: session.id
+            };
+        }
+        
+        // Store as memory with optional metadata
+        result = await this.db.query(`
             INSERT INTO memories 
             (project_id, session_id, content, memory_type, embedding, 
-             embedding_model, embedding_dimensions, importance_score, tags)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+             embedding_model, embedding_dimensions, importance_score, tags, metadata)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             RETURNING id, created_at
         `, [
             project.id,
@@ -1052,11 +1130,16 @@ export class MCPToolsService {
             modelConfig.model_name,
             embedding.length,
             finalImportanceScore,
-            tags
+            tags,
+            JSON.stringify(metadata)
         ]);
 
-        const memoryId = result.rows[0].id;
-        this._debugLog('store_memory', 'DB_INSERT_COMPLETE', { memory_id: memoryId });
+        memoryId = result.rows[0].id;
+        this._debugLog('store_memory', 'MEMORY_CREATED', { 
+            memory_id: memoryId,
+            memory_type,
+            has_metadata: Object.keys(metadata).length > 0
+        });
 
         // Trigger learning pipeline (real-time processing)
         this._debugLog('store_memory', 'TRIGGERING_LEARNING');
@@ -1072,16 +1155,46 @@ export class MCPToolsService {
             this._debugLog('store_memory', 'LEARNING_PIPELINE_UNAVAILABLE');
         }
 
+        // Check for critical patterns and trigger event-driven learning
+        this._debugLog('store_memory', 'CHECKING_CRITICAL_PATTERNS');
+        try {
+            const memoryForPatternCheck = {
+                id: memoryId,
+                project_id: project.id,
+                memory_type: memory_type,
+                importance_score: finalImportanceScore,
+                tags: tags,
+                content: content
+            };
+            
+            // Call the global critical pattern checker (if available)
+            if (global.checkCriticalPatterns && typeof global.checkCriticalPatterns === 'function') {
+                await global.checkCriticalPatterns(memoryForPatternCheck);
+                this._debugLog('store_memory', 'CRITICAL_PATTERN_CHECK_COMPLETE');
+            }
+        } catch (error) {
+            this._debugLog('store_memory', 'CRITICAL_PATTERN_CHECK_ERROR', { error: error.message });
+            this.logger.warn('Critical pattern check error (non-critical):', error.message);
+        }
+
         this._debugLog('store_memory', 'COMPLETE', { 
             memory_id: memoryId,
             project: project_name,
             session: session_name 
         });
 
+        // Generate appropriate response message
+        let responseText;
+        if (memory_type === 'task') {
+            responseText = `Task stored successfully!\n\nDetails:\n- Memory ID: ${memoryId}\n- Project: ${project_name}\n- Session: ${session_name}\n- Type: ${memory_type}\n- Status: ${metadata.status}\n- Priority: ${metadata.priority}\n- Task Type: ${metadata.task_type}\n- Importance: ${finalImportanceScore}\n- Embedding dimensions: ${embedding.length}\n- Created: ${result.rows[0].created_at}\n\n✅ Task is now trackable via task management tools and searchable via semantic search.\n🧠 Task will be analyzed by the learning system for pattern insights.`;
+        } else {
+            responseText = `Memory stored successfully!\n\nDetails:\n- Memory ID: ${memoryId}\n- Project: ${project_name}\n- Session: ${session_name}\n- Type: ${memory_type}\n- Importance: ${finalImportanceScore}\n- Embedding dimensions: ${embedding.length}\n- Created: ${result.rows[0].created_at}`;
+        }
+
         return {
             content: [{
                 type: "text",
-                text: `Memory stored successfully!\n\nDetails:\n- Memory ID: ${memoryId}\n- Project: ${project_name}\n- Session: ${session_name}\n- Type: ${memory_type}\n- Importance: ${finalImportanceScore}\n- Embedding dimensions: ${embedding.length}\n- Created: ${result.rows[0].created_at}`
+                text: responseText
             }]
         };
     }
@@ -1204,14 +1317,14 @@ export class MCPToolsService {
             const selectColumns = `
                 m.id, m.content, m.memory_type, m.importance_score, m.tags,
                 m.created_at, m.updated_at, m.metadata,
-                p.name as project_name, s.name as session_name${include_embedding ? ', m.embedding' : ''}
+                p.name as project_name, COALESCE(s.session_name, 'default') as session_name${include_embedding ? ', m.embedding' : ''}
             `;
 
             const result = await this.db.query(`
                 SELECT ${selectColumns}
                 FROM memories m
                 JOIN projects p ON m.project_id = p.id
-                JOIN sessions s ON m.session_id = s.id
+                LEFT JOIN sessions s ON m.session_id = s.id
                 WHERE m.id = $1
             `, [memory_id]);
 
@@ -1258,113 +1371,565 @@ Vector dimensions: ${JSON.parse(memory.embedding).length}` : ''}`
         }
     }
 
-    async _createProjectBrief(args) {
-        const { 
-            project_name, 
-            project_description, 
-            include_tasks = true, 
-            include_technical_analysis = true, 
-            sections = ["planning", "technical", "progress"] 
+    async _manageProjectBrief(args) {
+        const {
+            project_name,
+            project_description,
+            input_documents = {},
+            sections_to_update = ["all"],
+            include_tasks = true,
+            include_technical_analysis = true,
+            preserve_history = true,
+            update_related_memories = false,
+            related_memory_updates = {},
+            update_reason = "Project evolution update"
         } = args;
 
         try {
-            const briefSections = {};
+            // 1. Check if project brief already exists
+            const existingBriefQuery = `
+                SELECT id, content, created_at
+                FROM memories 
+                WHERE project_id = (SELECT id FROM projects WHERE name = $1)
+                AND memory_type = 'project_brief'
+                ORDER BY created_at DESC
+                LIMIT 1
+            `;
             
-            // 1. Search for relevant past experiences
-            const relevantMemories = await this._searchMemoriesInternal(project_description, project_name, null, 5, 0.3);
+            const briefResult = await this.db.query(existingBriefQuery, [project_name]);
+            const isUpdate = briefResult.rows.length > 0;
+            const existingBrief = isUpdate ? briefResult.rows[0] : null;
             
-            // 2. Get technology insights if requested
+            // 2. Intelligent document analysis
+            const documentInsights = await this._analyzeInputDocuments(input_documents, project_description);
+            
+            // 3. Extract or build comprehensive project description
+            let finalDescription = project_description;
+            if (!finalDescription && isUpdate) {
+                // Extract from existing brief
+                const descMatch = existingBrief.content.match(/\*\*Description:\*\*\s*(.+?)\n/s);
+                finalDescription = descMatch ? descMatch[1].trim() : "Project description not found";
+            }
+            if (!finalDescription && documentInsights.extractedDescription) {
+                finalDescription = documentInsights.extractedDescription;
+            }
+            if (!finalDescription) {
+                return {
+                    content: [{
+                        type: "text",
+                        text: `Error: project_description is required for new project briefs. Please provide a description or input documents to analyze.`
+                    }],
+                    isError: true
+                };
+            }
+            
+            // 4. Preserve history if updating
+            if (isUpdate && preserve_history) {
+                await this._storeMemory({
+                    content: `# Project Brief History\n\n**Version:** Previous (${new Date(existingBrief.created_at).toISOString()})\n**Reason for Update:** ${update_reason}\n\n---\n\n${existingBrief.content}`,
+                    project_name,
+                    memory_type: "project_brief",
+                    importance_score: 0.7,
+                    tags: ["project_brief_history", "archived", update_reason.replace(/\s+/g, '_').toLowerCase()]
+                });
+            }
+            
+            // 5. Get enhanced context and insights
+            const relevantMemories = await this._searchMemoriesInternal(
+                finalDescription + " " + (documentInsights.keyTerms || ""), 
+                project_name, 
+                null, 
+                10, 
+                0.3
+            );
+            
             let techInsights = null;
             if (include_technical_analysis) {
                 try {
-                    const insightsResult = await this._getLearningInsights({ 
-                        project_name, 
-                        insight_type: "best_practice", 
-                        limit: 10 
-                    });
-                    techInsights = insightsResult.content[0].text;
+                    const [bestPractices, techPreferences, patterns] = await Promise.all([
+                        this._getLearningInsights({ 
+                            insight_type: "best_practice", 
+                            limit: 5,
+                            project_name 
+                        }).catch(() => ({ content: [{ text: '' }] })),
+                        this._getLearningInsights({ 
+                            insight_type: "technology_preference", 
+                            limit: 3,
+                            project_name
+                        }).catch(() => ({ content: [{ text: '' }] })),
+                        this._getPatternAnalysis({ 
+                            pattern_category: "architectural", 
+                            min_confidence: 0.7, 
+                            limit: 3,
+                            project_name
+                        }).catch(() => ({ content: [{ text: '' }] }))
+                    ]);
+                    
+                    let combinedInsights = '';
+                    const bestPracticesText = bestPractices.content[0]?.text || '';
+                    const techPreferencesText = techPreferences.content[0]?.text || '';
+                    const patternsText = patterns.content[0]?.text || '';
+                    
+                    if (bestPracticesText) combinedInsights += `## Learning Insights\n${bestPracticesText}\n\n`;
+                    if (techPreferencesText) combinedInsights += `## Technology Preferences\n${techPreferencesText}\n\n`;
+                    if (patternsText) combinedInsights += `## Architectural Patterns\n${patternsText}\n\n`;
+                    
+                    techInsights = combinedInsights || null;
                 } catch (error) {
                     this.logger.warn('Could not fetch learning insights:', error.message);
                 }
             }
-
-            // 3. Generate each requested section
-            for (const section of sections) {
+            
+            // 6. Determine sections to generate
+            const shouldUpdateAll = sections_to_update.includes("all");
+            const sectionsToGenerate = shouldUpdateAll ? 
+                ["planning", "technical", "requirements", "architecture", "timeline", "risks", "progress"] :
+                sections_to_update;
+            
+            // 7. Generate sections with document insights
+            const briefSections = {};
+            for (const section of sectionsToGenerate) {
                 switch (section) {
                     case "planning":
-                        briefSections.planning = await this._generatePlanningSection(project_name, project_description, relevantMemories);
+                        briefSections.planning = await this._generateIntelligentPlanningSection(
+                            project_name, finalDescription, documentInsights, relevantMemories
+                        );
                         break;
                     case "technical":
-                        briefSections.technical = await this._generateTechnicalSection(project_name, project_description, techInsights, relevantMemories);
+                        briefSections.technical = await this._generateIntelligentTechnicalSection(
+                            project_name, finalDescription, documentInsights, techInsights, relevantMemories
+                        );
+                        break;
+                    case "requirements":
+                        briefSections.requirements = await this._generateIntelligentRequirementsSection(
+                            finalDescription, documentInsights
+                        );
+                        break;
+                    case "architecture":
+                        briefSections.architecture = await this._generateIntelligentArchitectureSection(
+                            finalDescription, documentInsights, relevantMemories
+                        );
+                        break;
+                    case "timeline":
+                        briefSections.timeline = await this._generateTimelineSection(finalDescription);
+                        break;
+                    case "risks":
+                        briefSections.risks = await this._generateIntelligentRisksSection(
+                            finalDescription, documentInsights, relevantMemories
+                        );
                         break;
                     case "progress":
                         briefSections.progress = await this._generateProgressSection(project_name);
                         break;
-                    case "requirements":
-                        briefSections.requirements = await this._generateRequirementsSection(project_description);
-                        break;
-                    case "architecture":
-                        briefSections.architecture = await this._generateArchitectureSection(project_description, relevantMemories);
-                        break;
-                    case "timeline":
-                        briefSections.timeline = await this._generateTimelineSection(project_description);
-                        break;
-                    case "risks":
-                        briefSections.risks = await this._generateRisksSection(project_description, relevantMemories);
-                        break;
                 }
             }
-
-            // 4. Create comprehensive brief content
-            const briefContent = this._formatProjectBrief(project_name, project_description, briefSections);
-
-            // 5. Store the brief as a memory
-            await this._storeMemory({
-                content: briefContent,
-                project_name,
-                memory_type: "project_brief",
-                importance: 0.9,
-                tags: ["project_brief", "planning", ...sections]
-            });
-
-            // 6. Create tasks if requested
+            
+            // 8. Merge with existing content if partial update
+            let finalSections = {};
+            if (isUpdate && !shouldUpdateAll) {
+                const existingSections = this._parseExistingBrief(existingBrief.content);
+                finalSections = { ...existingSections, ...briefSections };
+            } else {
+                finalSections = briefSections;
+            }
+            
+            // 9. Create comprehensive brief content
+            const briefContent = this._formatProjectBrief(
+                project_name, 
+                finalDescription, 
+                finalSections,
+                isUpdate ? {
+                    updateReason: update_reason,
+                    previousVersion: new Date(existingBrief.created_at).toISOString(),
+                    updatedSections: sectionsToGenerate,
+                    documentsAnalyzed: Object.keys(input_documents).length
+                } : {
+                    documentsAnalyzed: Object.keys(input_documents).length
+                }
+            );
+            
+            // 10. Store or update the brief
+            if (isUpdate) {
+                const updateQuery = `
+                    UPDATE memories 
+                    SET content = $1, 
+                        updated_at = NOW(),
+                        tags = array_append(tags, $2)
+                    WHERE id = $3
+                `;
+                
+                await this.db.query(updateQuery, [
+                    briefContent,
+                    `updated_${new Date().toISOString().split('T')[0]}`,
+                    existingBrief.id
+                ]);
+            } else {
+                await this._storeMemory({
+                    content: briefContent,
+                    project_name,
+                    memory_type: "project_brief",
+                    importance_score: 0.9,
+                    tags: ["project_brief", "planning", ...sectionsToGenerate]
+                });
+            }
+            
+            // 11. Handle related memory updates
+            const updatedRelatedMemories = [];
+            if (update_related_memories || Object.keys(related_memory_updates).length > 0) {
+                for (const [memoryType, content] of Object.entries(related_memory_updates)) {
+                    if (content && content.trim()) {
+                        try {
+                            const existingMemoryQuery = `
+                                SELECT id FROM memories 
+                                WHERE project_id = (SELECT id FROM projects WHERE name = $1)
+                                AND memory_type = $2
+                                ORDER BY created_at DESC
+                                LIMIT 1
+                            `;
+                            
+                            const memResult = await this.db.query(existingMemoryQuery, [project_name, memoryType]);
+                            
+                            if (memResult.rows.length > 0) {
+                                await this.db.query(
+                                    'UPDATE memories SET content = $1, updated_at = NOW() WHERE id = $2',
+                                    [content, memResult.rows[0].id]
+                                );
+                                updatedRelatedMemories.push(`Updated existing ${memoryType}`);
+                            } else {
+                                await this._storeMemory({
+                                    content,
+                                    project_name,
+                                    memory_type: memoryType,
+                                    importance_score: 0.8,
+                                    tags: ["auto_updated", "project_brief_related"]
+                                });
+                                updatedRelatedMemories.push(`Created new ${memoryType}`);
+                            }
+                        } catch (error) {
+                            this.logger.warn(`Failed to update ${memoryType}:`, error.message);
+                            updatedRelatedMemories.push(`Failed to update ${memoryType}`);
+                        }
+                    }
+                }
+                
+                // Auto-store extracted documents as related memories
+                if (documentInsights.extractedDocuments) {
+                    for (const [docType, docContent] of Object.entries(documentInsights.extractedDocuments)) {
+                        if (docContent && docContent.length > 100) {
+                            try {
+                                await this._storeMemory({
+                                    content: docContent,
+                                    project_name,
+                                    memory_type: docType,
+                                    importance_score: 0.8,
+                                    tags: ["extracted_from_brief", "auto_generated"]
+                                });
+                                updatedRelatedMemories.push(`Extracted and stored ${docType}`);
+                            } catch (error) {
+                                this.logger.warn(`Failed to store extracted ${docType}:`, error.message);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // 12. Create tasks if requested
             let tasksCreated = [];
             if (include_tasks) {
                 try {
                     const tasksResult = await this._createTasks({
                         project_name,
-                        requirements: briefContent,
-                        source_type: "project_brief"
+                        source_type: "project_brief",
+                        auto_extract: true,
+                        requirements: briefContent + (documentInsights.taskableContent || "")
                     });
-                    tasksCreated = tasksResult.tasks || [];
+                    tasksCreated = tasksResult.created_tasks || [];
                 } catch (error) {
                     this.logger.warn('Could not create tasks from brief:', error.message);
+                }
+            }
+            
+            // 13. Format response
+            const actionText = isUpdate ? "Updated" : "Created";
+            const responseText = `# Project Brief ${actionText} Successfully\n\n` +
+                `## ${actionText === "Updated" ? "Update" : "Creation"} Summary\n` +
+                `**Project:** ${project_name}\n` +
+                `**Action:** ${isUpdate ? "Updated existing brief" : "Created new brief"}\n` +
+                `**Sections ${actionText}:** ${sectionsToGenerate.join(', ')}\n` +
+                `**Documents Analyzed:** ${Object.keys(input_documents).length}\n` +
+                (isUpdate ? `**History Preserved:** ${preserve_history ? 'Yes' : 'No'}\n` : '') +
+                (updatedRelatedMemories.length > 0 ? `**Related Memories:** ${updatedRelatedMemories.join(', ')}\n` : '') +
+                (documentInsights.summary ? `**Document Analysis:** ${documentInsights.summary}\n` : '') +
+                `\n## ${actionText} Brief Content\n${briefContent}\n\n` +
+                (tasksCreated.length > 0 ? `## Tasks Created\n${tasksCreated.length} tasks were automatically created:\n${tasksCreated.slice(0, 5).map(task => `- ${task.title} (Priority: ${task.priority_score?.toFixed(2) || 'N/A'})`).join('\n')}\n\n` : '') +
+                `## Next Steps\n` +
+                `- Use \`get_pending_tasks\` to see prioritized task list\n` +
+                `- Use \`search_memories\` to find related project information\n` +
+                `- Use \`manage_project_brief\` again to evolve the brief as the project grows\n` +
+                `- Consider storing progress updates with \`store_progress\``;
+
+            return {
+                content: [{
+                    type: "text",
+                    text: responseText
+                }],
+                action: isUpdate ? "updated" : "created",
+                sections_processed: sectionsToGenerate,
+                documents_analyzed: Object.keys(input_documents).length,
+                tasks_created: tasksCreated.length,
+                related_memories_updated: updatedRelatedMemories
+            };
+        } catch (error) {
+            this.logger.error('Error in _manageProjectBrief:', error);
+            throw error;
+        }
+    }
+
+    async _updateProjectBrief(args) {
+        const { 
+            project_name,
+            updated_description,
+            sections_to_update = ["all"],
+            section_updates = {},
+            update_reason = "Project evolution update",
+            include_technical_analysis = true,
+            preserve_history = true,
+            update_related_memories = false,
+            related_memory_updates = {}
+        } = args;
+
+        try {
+            // 1. Find existing project brief
+            const existingBriefQuery = `
+                SELECT id, content, created_at
+                FROM memories 
+                WHERE project_id = (SELECT id FROM projects WHERE name = $1)
+                AND memory_type = 'project_brief'
+                ORDER BY created_at DESC
+                LIMIT 1
+            `;
+            
+            const briefResult = await this.db.query(existingBriefQuery, [project_name]);
+            
+            if (briefResult.rows.length === 0) {
+                return {
+                    content: [{
+                        type: "text",
+                        text: `No existing project brief found for "${project_name}". Use create_project_brief to create one first.`
+                    }],
+                    isError: true
+                };
+            }
+
+            const existingBrief = briefResult.rows[0];
+            const existingContent = existingBrief.content;
+            const briefId = existingBrief.id;
+
+            // 2. Preserve history if requested
+            if (preserve_history) {
+                await this._storeMemory({
+                    content: `# Project Brief History\n\n**Version:** Previous (${new Date(existingBrief.created_at).toISOString()})\n**Reason for Update:** ${update_reason}\n\n---\n\n${existingContent}`,
+                    project_name,
+                    memory_type: "project_brief",
+                    importance_score: 0.7,
+                    tags: ["project_brief_history", "archived", update_reason.replace(/\s+/g, '_').toLowerCase()]
+                });
+            }
+
+            // 3. Determine what to update
+            const shouldUpdateAll = sections_to_update.includes("all");
+            const sectionsToRegenerate = shouldUpdateAll ? 
+                ["planning", "technical", "progress", "requirements", "architecture", "timeline", "risks"] :
+                sections_to_update;
+
+            // 4. Parse existing brief to extract current description
+            let currentDescription = updated_description;
+            if (!currentDescription) {
+                // Extract description from existing brief
+                const descMatch = existingContent.match(/\*\*Description:\*\*\s*(.+?)\n/s);
+                currentDescription = descMatch ? descMatch[1].trim() : "Project description not found";
+            }
+
+            // 5. Get enhanced project context
+            const relevantMemories = await this._searchMemoriesInternal(
+                currentDescription + " " + update_reason, 
+                project_name, 
+                null, 
+                10, 
+                0.3
+            );
+            
+            // 6. Get updated technical insights if requested
+            let techInsights = null;
+            if (include_technical_analysis) {
+                try {
+                    const [bestPractices, techPreferences, patterns] = await Promise.all([
+                        this._getLearningInsights({ 
+                            insight_type: "best_practice", 
+                            limit: 5,
+                            project_name 
+                        }).catch(() => ({ content: [{ text: '' }] })),
+                        this._getLearningInsights({ 
+                            insight_type: "technology_preference", 
+                            limit: 3,
+                            project_name
+                        }).catch(() => ({ content: [{ text: '' }] })),
+                        this._getPatternAnalysis({ 
+                            pattern_category: "architectural", 
+                            min_confidence: 0.7, 
+                            limit: 3,
+                            project_name
+                        }).catch(() => ({ content: [{ text: '' }] }))
+                    ]);
+                    
+                    let combinedInsights = '';
+                    const bestPracticesText = bestPractices.content[0]?.text || '';
+                    const techPreferencesText = techPreferences.content[0]?.text || '';
+                    const patternsText = patterns.content[0]?.text || '';
+                    
+                    if (bestPracticesText) combinedInsights += `## Updated Best Practices\n${bestPracticesText}\n\n`;
+                    if (techPreferencesText) combinedInsights += `## Current Technology Preferences\n${techPreferencesText}\n\n`;
+                    if (patternsText) combinedInsights += `## Evolved Architectural Patterns\n${patternsText}\n\n`;
+                    
+                    techInsights = combinedInsights || null;
+                } catch (error) {
+                    this.logger.warn('Could not fetch updated learning insights:', error.message);
+                }
+            }
+
+            // 7. Generate updated sections
+            const updatedSections = {};
+            
+            for (const section of sectionsToRegenerate) {
+                // Use manual updates if provided, otherwise regenerate
+                if (section_updates[section]) {
+                    updatedSections[section] = section_updates[section];
+                } else {
+                    switch (section) {
+                        case "planning":
+                            updatedSections.planning = await this._generatePlanningSection(project_name, currentDescription, relevantMemories);
+                            break;
+                        case "technical":
+                            updatedSections.technical = await this._generateTechnicalSection(project_name, currentDescription, techInsights, relevantMemories);
+                            break;
+                        case "progress":
+                            updatedSections.progress = await this._generateProgressSection(project_name);
+                            break;
+                        case "requirements":
+                            updatedSections.requirements = await this._generateRequirementsSection(currentDescription);
+                            break;
+                        case "architecture":
+                            updatedSections.architecture = await this._generateArchitectureSection(currentDescription, relevantMemories);
+                            break;
+                        case "timeline":
+                            updatedSections.timeline = await this._generateTimelineSection(currentDescription);
+                            break;
+                        case "risks":
+                            updatedSections.risks = await this._generateRisksSection(currentDescription, relevantMemories);
+                            break;
+                    }
+                }
+            }
+
+            // 8. Merge with existing content if partial update
+            let finalSections = {};
+            if (!shouldUpdateAll) {
+                // Parse existing sections and merge
+                const existingSections = this._parseExistingBrief(existingContent);
+                finalSections = { ...existingSections, ...updatedSections };
+            } else {
+                finalSections = updatedSections;
+            }
+
+            // 9. Create updated brief content
+            const updatedBriefContent = this._formatProjectBrief(
+                project_name, 
+                currentDescription, 
+                finalSections,
+                {
+                    updateReason: update_reason,
+                    previousVersion: new Date(existingBrief.created_at).toISOString(),
+                    updatedSections: sectionsToRegenerate
+                }
+            );
+
+            // 10. Update the existing brief memory
+            const updateQuery = `
+                UPDATE memories 
+                SET content = $1, 
+                    updated_at = NOW(),
+                    tags = array_append(tags, $2)
+                WHERE id = $3
+            `;
+            
+            await this.db.query(updateQuery, [
+                updatedBriefContent,
+                `updated_${new Date().toISOString().split('T')[0]}`,
+                briefId
+            ]);
+
+            // 11. Update related memories if requested
+            const updatedRelatedMemories = [];
+            if (update_related_memories) {
+                for (const [memoryType, content] of Object.entries(related_memory_updates)) {
+                    if (content && content.trim()) {
+                        try {
+                            // Find existing memory of this type
+                            const existingMemoryQuery = `
+                                SELECT id FROM memories 
+                                WHERE project_id = (SELECT id FROM projects WHERE name = $1)
+                                AND memory_type = $2
+                                ORDER BY created_at DESC
+                                LIMIT 1
+                            `;
+                            
+                            const memResult = await this.db.query(existingMemoryQuery, [project_name, memoryType]);
+                            
+                            if (memResult.rows.length > 0) {
+                                // Update existing memory
+                                await this.db.query(
+                                    'UPDATE memories SET content = $1, updated_at = NOW() WHERE id = $2',
+                                    [content, memResult.rows[0].id]
+                                );
+                                updatedRelatedMemories.push(`Updated existing ${memoryType}`);
+                            } else {
+                                // Create new memory
+                                await this._storeMemory({
+                                    content,
+                                    project_name,
+                                    memory_type: memoryType,
+                                    importance_score: 0.8,
+                                    tags: ["auto_updated", "project_brief_related", update_reason.replace(/\s+/g, '_').toLowerCase()]
+                                });
+                                updatedRelatedMemories.push(`Created new ${memoryType}`);
+                            }
+                        } catch (error) {
+                            this.logger.warn(`Failed to update ${memoryType}:`, error.message);
+                            updatedRelatedMemories.push(`Failed to update ${memoryType}: ${error.message}`);
+                        }
+                    }
                 }
             }
 
             return {
                 content: [{
                     type: "text",
-                    text: `# Project Brief Created Successfully
-
-## Brief Content
-${briefContent}
-
-${tasksCreated.length > 0 ? `\n## Tasks Created
-${tasksCreated.length} tasks were automatically created from this brief:
-${tasksCreated.slice(0, 5).map(task => `- ${task.title} (Priority: ${task.priority})`).join('\n')}${tasksCreated.length > 5 ? `\n...and ${tasksCreated.length - 5} more tasks` : ''}
-
-Use \`get_next_task\` to see your highest priority task.` : ''}
-
-## Next Steps
-- Use \`search_memories\` to find related project information
-- Use \`get_learning_insights\` for technology recommendations
-- Use \`create_tasks\` to add more specific implementation tasks`
-                }]
+                    text: `# Project Brief Updated Successfully\n\n## Update Summary\n**Project:** ${project_name}\n**Update Reason:** ${update_reason}\n**Sections Updated:** ${sectionsToRegenerate.join(', ')}\n**History Preserved:** ${preserve_history ? 'Yes' : 'No'}\n${updatedRelatedMemories.length > 0 ? `\n**Related Memories Updated:** ${updatedRelatedMemories.join(', ')}` : ''}\n\n## Updated Brief Content\n${updatedBriefContent}\n\n## Next Steps\n- Review the updated sections for accuracy\n- Use \`search_memories\` to find related updates\n- Use \`store_progress\` to track implementation of changes\n- Use \`update_project_brief\` again as the project continues to evolve`
+                }],
+                updated_sections: sectionsToRegenerate,
+                preserved_history: preserve_history,
+                related_memories_updated: updatedRelatedMemories
             };
+
         } catch (error) {
-            this.logger.error('Failed to create project brief:', error);
-            throw error;
+            this.logger.error('Failed to update project brief:', error);
+            return {
+                content: [{
+                    type: "text",
+                    text: `Error updating project brief: ${error.message}`
+                }],
+                isError: true
+            };
         }
     }
 
@@ -1378,53 +1943,243 @@ Use \`get_next_task\` to see your highest priority task.` : ''}
     }
 
     async _generatePlanningSection(project_name, description, relevantMemories) {
-        return `## Planning
-
-### Project Overview
+        let planningContent = `### Project Overview
 **Project Name:** ${project_name}
 **Description:** ${description}
 
-### Objectives
-- Define clear project scope and deliverables
-- Establish development milestones
-- Identify key success metrics
+`;
+        
+        // Add relevant memories with better formatting if available
+        if (relevantMemories && relevantMemories.length > 50) {
+            planningContent += `### Related Experience & Lessons
+${relevantMemories}
 
-### Scope
-- Core functionality implementation
-- Testing and quality assurance
-- Documentation and deployment
+`;
+        }
+        
+        // Try to get actual insights about similar projects
+        try {
+            const projectInsights = await this._getLearningInsights({ 
+                insight_type: "evolution", 
+                limit: 3 
+            });
+            
+            const insights = projectInsights.content[0]?.text || '';
+            if (insights && insights.length > 50) {
+                planningContent += `### Project Evolution Insights
+${insights.substring(0, 400)}
 
-${relevantMemories.length > 0 ? `### Related Experience
-${relevantMemories.substring(0, 300)}...` : ''}`;
+`;
+            }
+        } catch (error) {
+            this.logger.warn('Could not fetch project insights:', error.message);
+        }
+        
+        // Parse description to infer objectives
+        const isMigration = /migrat|convert|transform|port/i.test(description);
+        const isNewProject = /new|build|create|develop/i.test(description);
+        const hasComplexity = /enterprise|complex|microservice|architecture/i.test(description);
+        
+        planningContent += `### Key Objectives
+`;
+        
+        if (isMigration) {
+            planningContent += `- Successfully migrate existing system with minimal downtime
+- Maintain data integrity throughout the migration process
+- Ensure feature parity with existing system
+- Implement improved architecture and performance
+`;
+        } else if (isNewProject) {
+            planningContent += `- Deliver core functionality that meets user requirements
+- Establish scalable and maintainable architecture
+- Implement comprehensive testing and quality assurance
+- Create thorough documentation for future maintenance
+`;
+        } else {
+            planningContent += `- Define clear project scope and deliverables
+- Establish development milestones and success metrics
+- Implement robust testing and quality assurance processes
+- Ensure proper documentation and deployment procedures
+`;
+        }
+        
+        if (hasComplexity) {
+            planningContent += `- Handle enterprise-level complexity and scale requirements
+- Design for microservices architecture and distributed systems
+- Implement proper monitoring and observability
+`;
+        }
+        
+        return `## Planning
+
+${planningContent}`;
     }
 
     async _generateTechnicalSection(project_name, description, techInsights, relevantMemories) {
-        return `## Technical
-
-### Technology Stack
-- Based on project requirements and past experience
-- Consider scalability and maintainability requirements
-- Leverage proven technologies from similar projects
-
-### Architecture
-- Modular design approach
-- Clear separation of concerns
-- Scalable and testable structure
-
-${techInsights ? `### Technology Recommendations
-${techInsights.substring(0, 500)}...` : ''}
-
-### Development Environment
-- Version control setup
-- Development tooling
-- Testing framework configuration`;
+        const descLower = description.toLowerCase();
+        let techContent = '';
+        
+        // Analyze description for technology stack requirements
+        const technologies = {
+            frontend: [],
+            backend: [],
+            database: [],
+            infrastructure: [],
+            tools: []
+        };
+        
+        // Frontend technology detection
+        if (/react|jsx/.test(descLower)) technologies.frontend.push('React');
+        if (/vue/.test(descLower)) technologies.frontend.push('Vue.js');
+        if (/angular/.test(descLower)) technologies.frontend.push('Angular');
+        if (/typescript/.test(descLower)) technologies.frontend.push('TypeScript');
+        if (/ui|interface|frontend|web/.test(descLower) && technologies.frontend.length === 0) {
+            technologies.frontend.push('Modern web framework (React/Vue recommended)');
+        }
+        
+        // Backend technology detection
+        if (/node|javascript/.test(descLower)) technologies.backend.push('Node.js');
+        if (/python/.test(descLower)) technologies.backend.push('Python');
+        if (/java/.test(descLower)) technologies.backend.push('Java');
+        if (/go|golang/.test(descLower)) technologies.backend.push('Go');
+        if (/api|backend|server/.test(descLower) && technologies.backend.length === 0) {
+            technologies.backend.push('RESTful API framework');
+        }
+        
+        // Database technology detection
+        if (/postgres|postgresql/.test(descLower)) technologies.database.push('PostgreSQL');
+        if (/mysql/.test(descLower)) technologies.database.push('MySQL');
+        if (/mongo|mongodb/.test(descLower)) technologies.database.push('MongoDB');
+        if (/redis/.test(descLower)) technologies.database.push('Redis');
+        if (/database|storage|data/.test(descLower) && technologies.database.length === 0) {
+            technologies.database.push('Relational database (PostgreSQL recommended)');
+        }
+        
+        // Infrastructure detection
+        if (/docker/.test(descLower)) technologies.infrastructure.push('Docker');
+        if (/kubernetes|k8s/.test(descLower)) technologies.infrastructure.push('Kubernetes');
+        if (/aws/.test(descLower)) technologies.infrastructure.push('AWS');
+        if (/azure/.test(descLower)) technologies.infrastructure.push('Azure');
+        if (/gcp|google.?cloud/.test(descLower)) technologies.infrastructure.push('Google Cloud');
+        if (/cloud|deploy|infrastructure/.test(descLower) && technologies.infrastructure.length === 0) {
+            technologies.infrastructure.push('Container orchestration');
+        }
+        
+        // Architecture analysis
+        const architecturePatterns = [];
+        if (/microservice/.test(descLower)) architecturePatterns.push('Microservices Architecture');
+        if (/monolith/.test(descLower)) architecturePatterns.push('Monolithic Architecture');
+        if (/event.?driven/.test(descLower)) architecturePatterns.push('Event-Driven Architecture');
+        if (/api/.test(descLower)) architecturePatterns.push('API-First Design');
+        if (/migrat/.test(descLower)) architecturePatterns.push('Strangler Fig Pattern (for migration)');
+        
+        // Generate technology stack section
+        techContent += '### Technology Stack\n\n';
+        
+        Object.entries(technologies).forEach(([category, techs]) => {
+            if (techs.length > 0) {
+                const categoryName = category.charAt(0).toUpperCase() + category.slice(1);
+                techContent += `**${categoryName}:**\n`;
+                techs.forEach(tech => techContent += `- ${tech}\n`);
+                techContent += '\n';
+            }
+        });
+        
+        // Architecture recommendations
+        if (architecturePatterns.length > 0) {
+            techContent += '### Architecture Patterns\n';
+            architecturePatterns.forEach(pattern => {
+                techContent += `- **${pattern}:** `;
+                switch (pattern) {
+                    case 'Microservices Architecture':
+                        techContent += 'Decomposed services for scalability and independent deployment\n';
+                        break;
+                    case 'Monolithic Architecture':
+                        techContent += 'Single deployable unit for simplicity and rapid development\n';
+                        break;
+                    case 'Event-Driven Architecture':
+                        techContent += 'Asynchronous event processing for loose coupling\n';
+                        break;
+                    case 'API-First Design':
+                        techContent += 'Design APIs before implementation for better integration\n';
+                        break;
+                    case 'Strangler Fig Pattern (for migration)':
+                        techContent += 'Gradual replacement of legacy systems\n';
+                        break;
+                    default:
+                        techContent += 'Suitable for the identified requirements\n';
+                }
+            });
+            techContent += '\n';
+        }
+        
+        // Security considerations
+        if (/auth|security|permission|sensitive/.test(descLower)) {
+            techContent += '### Security Considerations\n';
+            if (/auth/.test(descLower)) techContent += '- Authentication and authorization system\n';
+            if (/sensitive|secure/.test(descLower)) techContent += '- Data encryption at rest and in transit\n';
+            techContent += '- Input validation and sanitization\n';
+            techContent += '- Security headers and CORS configuration\n\n';
+        }
+        
+        // Performance considerations
+        if (/performance|scale|load|fast/.test(descLower)) {
+            techContent += '### Performance Considerations\n';
+            techContent += '- Database indexing and query optimization\n';
+            techContent += '- Caching strategy (Redis/in-memory)\n';
+            techContent += '- Load balancing and horizontal scaling\n';
+            techContent += '- CDN for static assets\n\n';
+        }
+        
+        // Try to get historical patterns and insights
+        try {
+            const patternsResult = await this._getPatternAnalysis({ 
+                pattern_category: "architectural", 
+                min_confidence: 0.6, 
+                limit: 3 
+            });
+            
+            const patterns = patternsResult.content[0]?.text || '';
+            if (patterns && patterns.length > 50) {
+                techContent += '### Recommended Patterns from Experience\n';
+                techContent += `${patterns.substring(0, 400)}\n\n`;
+            }
+        } catch (error) {
+            this.logger.warn('Could not fetch architectural patterns:', error.message);
+        }
+        
+        // Add technology insights if available
+        if (techInsights && techInsights.length > 50) {
+            techContent += '### Technology Recommendations from History\n';
+            techContent += `${techInsights}\n\n`;
+        }
+        
+        // Add relevant memories with actual context
+        if (relevantMemories && relevantMemories.length > 50) {
+            techContent += '### Lessons from Similar Projects\n';
+            techContent += `${relevantMemories}\n\n`;
+        }
+        
+        // Development practices based on project context
+        if (/test|quality|tdd/.test(descLower) || /enterprise|production/.test(descLower)) {
+            techContent += '### Development Practices\n';
+            if (/test|tdd/.test(descLower)) techContent += '- Test-driven development (TDD) for reliable code\n';
+            if (/team|collaboration|multiple/.test(descLower)) techContent += '- Code review process for team coordination\n';
+            if (/deploy|production|ci\/cd/.test(descLower)) techContent += '- Continuous integration/deployment pipeline\n';
+            if (/api|documentation/.test(descLower)) techContent += '- API-first development with comprehensive documentation\n';
+            if (/team|collaboration/.test(descLower)) techContent += '- Team collaboration tools and coding standards\n';
+            if (/version|git/.test(descLower)) techContent += '- Version control best practices and branching strategy\n';
+            techContent += '\n';
+        }
+        
+        return `## Technical\n\n${techContent}`;
     }
 
     async _generateProgressSection(project_name) {
         // Try to get current project status
         let currentTasks = '';
         try {
-            const tasksResult = await this._getNextTask({ project_name });
+            const tasksResult = await this._getPendingTasks({ project_name, limit: 3 });
             currentTasks = tasksResult.content[0].text;
         } catch (error) {
             currentTasks = 'No current tasks found';
@@ -1449,89 +2204,318 @@ ${currentTasks}
     }
 
     async _generateRequirementsSection(description) {
-        return `## Requirements
-
-### Functional Requirements
-- Core features based on project description
-- User interaction requirements
-- Performance expectations
-
-### Non-Functional Requirements
-- Security considerations
-- Performance benchmarks
-- Scalability requirements
-- Maintainability standards
-
-### Project Description Analysis
-${description}`;
+        // Extract actual requirements from the description
+        let requirementsContent = `### Project Description Analysis\n${description}\n\n`;
+        
+        // Try to get insights about requirements patterns from past projects
+        try {
+            const requirementsInsights = await this._getLearningInsights({ 
+                insight_type: "best_practice", 
+                limit: 3 
+            });
+            
+            const insights = requirementsInsights.content[0]?.text || '';
+            if (insights && insights.length > 50) {
+                requirementsContent += `### Requirements Best Practices from Past Projects\n${insights.substring(0, 400)}\n\n`;
+            }
+        } catch (error) {
+            this.logger.warn('Could not fetch requirements insights:', error.message);
+        }
+        
+        // Parse description for specific requirements
+        const hasAuth = /auth|login|user|security/i.test(description);
+        const hasAPI = /api|backend|server|endpoint/i.test(description);
+        const hasUI = /ui|frontend|react|angular|interface/i.test(description);
+        const hasMigration = /migrat|convert|transform|port/i.test(description);
+        
+        if (hasAuth || hasAPI || hasUI || hasMigration) {
+            requirementsContent += `### Functional Requirements\n`;
+            if (hasAuth) requirementsContent += `- User authentication and authorization system\n`;
+            if (hasAPI) requirementsContent += `- Backend API development and integration\n`;
+            if (hasUI) requirementsContent += `- User interface development and user experience\n`;
+            if (hasMigration) requirementsContent += `- Data migration and system transformation\n`;
+            requirementsContent += `- Core functionality as described in project description\n\n`;
+            
+            requirementsContent += `### Non-Functional Requirements\n`;
+            requirementsContent += `- Performance and scalability considerations\n`;
+            requirementsContent += `- Security and data protection\n`;
+            requirementsContent += `- Maintainability and code quality\n`;
+            if (hasMigration) requirementsContent += `- Migration safety and rollback capabilities\n`;
+        } else {
+            // Generic requirements if we can't parse specifics
+            requirementsContent += `### Functional Requirements\n- Core features based on project description\n- User interaction requirements\n- Performance expectations\n\n`;
+            requirementsContent += `### Non-Functional Requirements\n- Security considerations\n- Performance benchmarks\n- Scalability requirements\n- Maintainability standards\n\n`;
+        }
+        
+        return `## Requirements\n\n${requirementsContent}`;
     }
 
     async _generateArchitectureSection(description, relevantMemories) {
-        return `## Architecture
-
-### System Design
-- High-level component overview
-- Data flow architecture
-- Integration points
-
-### Design Patterns
-- Recommended patterns based on project type
-- Proven approaches from similar implementations
-
-### Scalability Considerations
-- Performance optimization strategies
-- Resource management
-- Future expansion capabilities
-
-${relevantMemories.length > 0 ? `### Lessons from Similar Projects
-${relevantMemories.substring(0, 300)}...` : ''}`;
+        const descLower = description.toLowerCase();
+        let archContent = '## Architecture\n\n';
+        
+        // Analyze description for architecture patterns
+        const architectures = [];
+        if (/microservice/.test(descLower)) architectures.push('Microservices architecture with service decomposition');
+        if (/monolith/.test(descLower)) architectures.push('Monolithic architecture for rapid development');
+        if (/api/.test(descLower)) architectures.push('API-centric design with clear service boundaries');
+        if (/event/.test(descLower)) architectures.push('Event-driven architecture for loose coupling');
+        if (/real.?time|websocket/.test(descLower)) architectures.push('Real-time communication architecture');
+        if (/mobile/.test(descLower)) architectures.push('Mobile-responsive architecture');
+        
+        // System design based on technology stack
+        archContent += '### System Design\n';
+        if (/react|vue|angular/.test(descLower)) {
+            archContent += '- Frontend: Single-page application with component-based architecture\n';
+        }
+        if (/node|express|api/.test(descLower)) {
+            archContent += '- Backend: RESTful API server with modular endpoint design\n';
+        }
+        if (/database|db|storage/.test(descLower)) {
+            archContent += '- Data layer: Persistent storage with optimized query patterns\n';
+        }
+        if (/auth|login|user/.test(descLower)) {
+            archContent += '- Authentication: Secure user management and session handling\n';
+        }
+        if (architectures.length === 0) {
+            archContent += '- Modular component design with clear separation of concerns\n';
+            archContent += '- Scalable data flow and integration architecture\n';
+        }
+        archContent += '\n';
+        
+        // Architecture patterns
+        if (architectures.length > 0) {
+            archContent += '### Architecture Patterns\n';
+            architectures.forEach(arch => archContent += `- ${arch}\n`);
+            archContent += '\n';
+        }
+        
+        // Scalability based on requirements
+        if (/scale|performance|load|traffic|users/.test(descLower)) {
+            archContent += '### Scalability Considerations\n';
+            if (/cache|redis/.test(descLower)) archContent += '- Caching strategy for improved performance\n';
+            if (/database/.test(descLower)) archContent += '- Database optimization and indexing strategy\n';
+            if (/api/.test(descLower)) archContent += '- API rate limiting and load balancing\n';
+            if (/real.?time/.test(descLower)) archContent += '- Real-time connection management and scaling\n';
+            archContent += '- Horizontal scaling capabilities for growth\n';
+            archContent += '- Performance monitoring and optimization points\n\n';
+        }
+        
+        // Add relevant memories
+        if (relevantMemories && relevantMemories.length > 50) {
+            archContent += '### Lessons from Similar Projects\n';
+            archContent += `${relevantMemories.substring(0, 400)}\n\n`;
+        }
+        
+        return archContent;
     }
 
     async _generateTimelineSection(description) {
-        return `## Timeline
-
-### Phase 1: Setup & Planning (Week 1)
-- Environment configuration
-- Initial architecture design
-- Core dependencies setup
-
-### Phase 2: Core Development (Weeks 2-4)
-- Primary feature implementation
-- Basic testing framework
-- Documentation foundation
-
-### Phase 3: Integration & Testing (Week 5)
-- Component integration
-- Comprehensive testing
-- Performance optimization
-
-### Phase 4: Deployment & Documentation (Week 6)
-- Production deployment
-- Final documentation
-- Project wrap-up`;
+        // Analyze project description for complexity and scope
+        const descLower = description.toLowerCase();
+        
+        // Detect project type and complexity
+        const isMigration = /migrat|port|convert|refactor|legacy/.test(descLower);
+        const isNewProject = /new|create|build|develop|start/.test(descLower);
+        const isFeature = /feature|add|implement|extend/.test(descLower);
+        const isBugfix = /fix|bug|issue|error|problem/.test(descLower);
+        
+        // Detect technology complexity
+        const hasDatabase = /database|db|sql|postgres|mysql|mongo/.test(descLower);
+        const hasAPI = /api|rest|graphql|endpoint|service/.test(descLower);
+        const hasUI = /ui|frontend|react|vue|angular|interface/.test(descLower);
+        const hasAuth = /auth|login|user|security|permission/.test(descLower);
+        const hasIntegration = /integrat|third.?party|external|webhook/.test(descLower);
+        
+        // Calculate complexity score (1-5)
+        let complexity = 1;
+        if (hasDatabase) complexity += 1;
+        if (hasAPI) complexity += 1;
+        if (hasUI) complexity += 1;
+        if (hasAuth) complexity += 1;
+        if (hasIntegration) complexity += 1;
+        if (isMigration) complexity += 1;
+        
+        // Estimate timeline based on project type and complexity
+        let phases = [];
+        let totalWeeks = Math.max(2, complexity);
+        
+        if (isBugfix) {
+            totalWeeks = Math.min(2, totalWeeks);
+            phases = [
+                { name: 'Investigation & Planning', weeks: 1, tasks: ['Root cause analysis', 'Impact assessment', 'Solution design'] },
+                { name: 'Implementation & Testing', weeks: 1, tasks: ['Bug fix implementation', 'Regression testing', 'Code review'] }
+            ];
+        } else if (isFeature) {
+            totalWeeks = Math.min(4, totalWeeks);
+            phases = [
+                { name: 'Planning & Design', weeks: 1, tasks: ['Requirements analysis', 'Technical design', 'API/UI mockups'] },
+                { name: 'Core Implementation', weeks: Math.max(1, totalWeeks - 2), tasks: ['Feature development', 'Unit testing', 'Integration'] },
+                { name: 'Testing & Deployment', weeks: 1, tasks: ['End-to-end testing', 'Performance validation', 'Production deployment'] }
+            ];
+        } else if (isMigration) {
+            totalWeeks = Math.max(4, totalWeeks);
+            phases = [
+                { name: 'Migration Planning', weeks: 1, tasks: ['Data mapping analysis', 'Migration strategy', 'Risk assessment'] },
+                { name: 'Migration Development', weeks: Math.max(2, totalWeeks - 3), tasks: ['Migration scripts', 'Data validation tools', 'Rollback procedures'] },
+                { name: 'Testing & Validation', weeks: 1, tasks: ['Data integrity testing', 'Performance validation', 'User acceptance testing'] },
+                { name: 'Production Migration', weeks: 1, tasks: ['Production cutover', 'Monitoring setup', 'Post-migration validation'] }
+            ];
+        } else {
+            // New project or general development
+            totalWeeks = Math.max(3, totalWeeks);
+            phases = [
+                { name: 'Setup & Architecture', weeks: 1, tasks: ['Environment setup', 'Architecture design', 'Tech stack decisions'] },
+                { name: 'Core Development', weeks: Math.max(2, totalWeeks - 2), tasks: ['Primary features', 'Database design', 'API development'] },
+                { name: 'Integration & Polish', weeks: 1, tasks: ['Component integration', 'Testing', 'Documentation'] }
+            ];
+        }
+        
+        // Add complexity-specific tasks
+        if (hasAuth && phases.length > 1) {
+            phases[1].tasks.push('Authentication system');
+        }
+        if (hasIntegration && phases.length > 1) {
+            phases[1].tasks.push('Third-party integrations');
+        }
+        
+        // Generate timeline content
+        let timeline = `## Timeline\n\n**Estimated Duration:** ${totalWeeks} week${totalWeeks > 1 ? 's' : ''}\n**Project Type:** ${isMigration ? 'Migration' : isFeature ? 'Feature Development' : isBugfix ? 'Bug Fix' : 'New Development'}\n**Complexity Level:** ${complexity <= 2 ? 'Simple' : complexity <= 4 ? 'Moderate' : 'Complex'}\n\n`;
+        
+        phases.forEach((phase, index) => {
+            const weekStart = phases.slice(0, index).reduce((sum, p) => sum + p.weeks, 1);
+            const weekEnd = weekStart + phase.weeks - 1;
+            const weekLabel = phase.weeks === 1 ? `Week ${weekStart}` : `Weeks ${weekStart}-${weekEnd}`;
+            
+            timeline += `### Phase ${index + 1}: ${phase.name} (${weekLabel})\n`;
+            phase.tasks.forEach(task => {
+                timeline += `- ${task}\n`;
+            });
+            timeline += '\n';
+        });
+        
+        // Add project-specific considerations
+        if (hasDatabase) {
+            timeline += `### Database Considerations\n- Schema design and migration planning\n- Performance optimization and indexing\n- Backup and recovery procedures\n\n`;
+        }
+        
+        if (hasIntegration) {
+            timeline += `### Integration Considerations\n- Third-party API documentation review\n- Error handling and retry logic\n- Rate limiting and monitoring\n\n`;
+        }
+        
+        return timeline.trim();
     }
 
     async _generateRisksSection(description, relevantMemories) {
-        return `## Risks & Mitigation
-
-### Technical Risks
-- **Technology Learning Curve:** Allow extra time for new technology adoption
-- **Integration Complexity:** Plan for thorough testing of component interactions
-- **Performance Issues:** Implement monitoring and optimization from early stages
-
-### Project Risks
-- **Scope Creep:** Maintain clear requirements documentation
-- **Timeline Delays:** Build buffer time into milestones
-- **Resource Constraints:** Identify critical path dependencies early
-
-### Mitigation Strategies
-- Regular progress reviews
-- Incremental development approach
-- Continuous testing and validation
-
-${relevantMemories.length > 0 ? `### Historical Insights
-Based on similar projects, common issues include:
-${relevantMemories.substring(0, 200)}...` : ''}`;
+        const descLower = description.toLowerCase();
+        
+        // Analyze description for specific risk factors
+        const risks = {
+            technical: [],
+            project: [],
+            data: [],
+            integration: []
+        };
+        
+        // Technology-specific risks
+        if (/new|unfamiliar|learn|first.?time/.test(descLower)) {
+            risks.technical.push('**Technology Learning Curve:** Team unfamiliarity with required technologies may cause delays');
+        }
+        if (/legacy|old|deprecated|outdated/.test(descLower)) {
+            risks.technical.push('**Legacy System Dependencies:** Outdated systems may have compatibility issues or limited documentation');
+        }
+        if (/performance|scale|load|traffic/.test(descLower)) {
+            risks.technical.push('**Performance Requirements:** High performance demands may require significant optimization efforts');
+        }
+        if (/integrat|third.?party|external|api/.test(descLower)) {
+            risks.integration.push('**Third-party Integration Risks:** External service dependencies may introduce reliability issues');
+            risks.integration.push('**API Changes:** Third-party APIs may change without notice, breaking functionality');
+        }
+        if (/security|auth|permission|sensitive/.test(descLower)) {
+            risks.technical.push('**Security Vulnerabilities:** Security requirements add complexity and require specialized expertise');
+        }
+        
+        // Data-related risks
+        if (/migrat|transfer|import|export/.test(descLower)) {
+            risks.data.push('**Data Migration Risks:** Data corruption or loss during migration processes');
+            risks.data.push('**Data Integrity:** Ensuring data consistency across old and new systems');
+        }
+        if (/database|large.?data|big.?data/.test(descLower)) {
+            risks.data.push('**Database Performance:** Large datasets may cause query performance issues');
+        }
+        
+        // Project management risks
+        if (/complex|difficult|challenging/.test(descLower)) {
+            risks.project.push('**Scope Complexity:** High complexity may lead to underestimated effort and timeline delays');
+        }
+        if (/deadline|urgent|asap|quickly/.test(descLower)) {
+            risks.project.push('**Timeline Pressure:** Aggressive deadlines may compromise quality or completeness');
+        }
+        if (/team|multiple|collaboration/.test(descLower)) {
+            risks.project.push('**Coordination Overhead:** Multiple team members require coordination and communication processes');
+        }
+        
+        // Build risk sections
+        let riskContent = '## Risks & Mitigation\n\n';
+        
+        if (risks.technical.length > 0) {
+            riskContent += '### Technical Risks\n';
+            risks.technical.forEach(risk => riskContent += `- ${risk}\n`);
+            riskContent += '\n';
+        }
+        
+        if (risks.data.length > 0) {
+            riskContent += '### Data Risks\n';
+            risks.data.forEach(risk => riskContent += `- ${risk}\n`);
+            riskContent += '\n';
+        }
+        
+        if (risks.integration.length > 0) {
+            riskContent += '### Integration Risks\n';
+            risks.integration.forEach(risk => riskContent += `- ${risk}\n`);
+            riskContent += '\n';
+        }
+        
+        if (risks.project.length > 0) {
+            riskContent += '### Project Management Risks\n';
+            risks.project.forEach(risk => riskContent += `- ${risk}\n`);
+            riskContent += '\n';
+        }
+        
+        // Add fallback risks if no specific ones detected
+        if (Object.values(risks).every(arr => arr.length === 0)) {
+            riskContent += '### General Project Risks\n';
+            riskContent += '- **Scope Creep:** Requirements may expand during development\n';
+            riskContent += '- **Timeline Delays:** Unexpected technical challenges may arise\n';
+            riskContent += '- **Quality Issues:** Rushing development may compromise code quality\n\n';
+        }
+        
+        // Mitigation strategies based on identified risks
+        riskContent += '### Mitigation Strategies\n';
+        
+        if (risks.technical.length > 0) {
+            riskContent += '- **Technical Risk Mitigation:** Allocate time for research, prototyping, and technical spikes\n';
+        }
+        if (risks.data.length > 0) {
+            riskContent += '- **Data Risk Mitigation:** Implement comprehensive backup, validation, and rollback procedures\n';
+        }
+        if (risks.integration.length > 0) {
+            riskContent += '- **Integration Risk Mitigation:** Create abstractions, implement circuit breakers, and plan for service failures\n';
+        }
+        if (risks.project.length > 0) {
+            riskContent += '- **Project Risk Mitigation:** Regular progress reviews, clear communication channels, and scope management\n';
+        }
+        
+        riskContent += '- **General Mitigation:** Incremental development, continuous testing, and early user feedback\n\n';
+        
+        // Add historical insights if available
+        if (relevantMemories && relevantMemories.length > 50) {
+            riskContent += '### Historical Insights\n';
+            riskContent += 'Based on similar projects, key lessons learned:\n';
+            riskContent += `${relevantMemories.substring(0, 300)}...\n\n`;
+        }
+        
+        return riskContent.trim();
     }
 
     _formatProjectBrief(project_name, description, sections) {
@@ -1582,12 +2566,12 @@ ${relevantMemories.substring(0, 200)}...` : ''}`;
             let finalVersion = version;
             if (!finalVersion) {
                 const latestProgress = await this.db.query(`
-                    SELECT version FROM memories 
+                    SELECT metadata->>'version' as version FROM memories 
                     WHERE project_id = $1 AND memory_type = 'progress'
                     ORDER BY created_at DESC LIMIT 1
                 `, [project.id]);
 
-                if (latestProgress.rows.length > 0) {
+                if (latestProgress.rows.length > 0 && latestProgress.rows[0].version) {
                     finalVersion = this._incrementVersion(latestProgress.rows[0].version);
                 } else {
                     finalVersion = "0.1.0";
@@ -1623,7 +2607,7 @@ ${next_steps.map(step => `- ${step}`).join('\n')}` : ''}`;
                 content: progressContent,
                 project_name,
                 memory_type: "progress",
-                importance: 0.8,
+                importance_score: 0.8,
                 tags: ["progress", "version", milestone_type, ...tags],
                 metadata: progressMetadata
             });
@@ -1632,7 +2616,7 @@ ${next_steps.map(step => `- ${step}`).join('\n')}` : ''}`;
             if (completion_percentage !== undefined) {
                 await this.db.query(`
                     UPDATE projects 
-                    SET metadata = COALESCE(metadata, '{}') || $2
+                    SET settings = COALESCE(settings, '{}') || $2
                     WHERE id = $1
                 `, [project.id, JSON.stringify({ 
                     last_completion_percentage: completion_percentage,
@@ -1944,69 +2928,6 @@ ${analytics}
         };
     }
 
-    async _getInsights(args) {
-        const { 
-            insight_type, 
-            min_confidence = 0.7, 
-            limit = 20 
-        } = args;
-
-        let query = `
-            SELECT 
-                insight_type,
-                insight_category,
-                insight_title,
-                insight_description,
-                confidence_level,
-                evidence_strength,
-                projects_involved,
-                last_reinforced
-            FROM meta_insights
-            WHERE confidence_level >= $1
-        `;
-
-        const params = [min_confidence];
-        let paramCount = 1;
-
-        if (insight_type) {
-            paramCount++;
-            query += ` AND insight_type = $${paramCount}`;
-            params.push(insight_type);
-        }
-
-        query += `
-            ORDER BY confidence_level DESC, evidence_strength DESC
-            LIMIT $${paramCount + 1}
-        `;
-        params.push(limit);
-
-        const result = await this.db.query(query, params);
-
-        if (result.rows.length === 0) {
-            return {
-                content: [{
-                    type: "text",
-                    text: `No insights found with confidence >= ${min_confidence}`
-                }]
-            };
-        }
-
-        const insights = result.rows.map((row, i) => 
-            `${i + 1}. **${row.insight_title}** (${row.insight_type})\n` +
-            `   Category: ${row.insight_category}\n` +
-            `   Confidence: ${(row.confidence_level * 100).toFixed(1)}% | Evidence: ${(row.evidence_strength * 100).toFixed(1)}%\n` +
-            `   Projects: ${row.projects_involved?.join(', ') || 'none'}\n` +
-            `   Description: ${row.insight_description}\n` +
-            `   Last reinforced: ${row.last_reinforced}\n`
-        ).join('\n');
-
-        return {
-            content: [{
-                type: "text",
-                text: `Meta-Learning Insights (${result.rows.length}):\n\n${insights}`
-            }]
-        };
-    }
 
     async _getCodingPatterns(args) {
         const { 
@@ -2145,6 +3066,57 @@ ${analytics}
         return result.rows[0];
     }
 
+    /**
+     * Parse task content to extract structured task information
+     */
+    _parseTaskContent(content) {
+        // Default values
+        let title = content;
+        let description = '';
+        let type = 'task';
+        let priority = 'medium';
+
+        // Try to extract title from first line
+        const lines = content.split('\n').filter(line => line.trim());
+        if (lines.length > 0) {
+            title = lines[0].trim();
+            if (lines.length > 1) {
+                description = lines.slice(1).join('\n').trim();
+            }
+        }
+
+        // Limit title length
+        if (title.length > 500) {
+            title = title.substring(0, 497) + '...';
+        }
+
+        // Detect task type from keywords
+        const lowerContent = content.toLowerCase();
+        if (lowerContent.includes('bug') || lowerContent.includes('fix') || lowerContent.includes('error') || lowerContent.includes('issue')) {
+            type = 'defect';
+        } else if (lowerContent.includes('feature') || lowerContent.includes('new') || lowerContent.includes('add') || lowerContent.includes('implement')) {
+            type = 'feature';
+        } else if (lowerContent.includes('improve') || lowerContent.includes('optimize') || lowerContent.includes('refactor') || lowerContent.includes('enhance')) {
+            type = 'improvement';
+        }
+
+        // Detect priority from keywords
+        if (lowerContent.includes('urgent') || lowerContent.includes('critical') || lowerContent.includes('asap')) {
+            priority = 'critical';
+        } else if (lowerContent.includes('high') || lowerContent.includes('important') || lowerContent.includes('priority')) {
+            priority = 'high';
+        } else if (lowerContent.includes('low') || lowerContent.includes('minor') || lowerContent.includes('nice to have')) {
+            priority = 'low';
+        }
+
+        return {
+            title,
+            description,
+            type,
+            priority
+        };
+    }
+
     // ============================================================================
     // SEQUENTIAL THINKING TOOL IMPLEMENTATIONS
     // ============================================================================
@@ -2229,6 +3201,9 @@ ${analytics}
 
         const {
             sequence_id,
+            project_name,
+            sequence_name,
+            goal,
             content,
             thought_type = "reasoning",
             confidence_level = 0.5,
@@ -2236,8 +3211,55 @@ ${analytics}
         } = args;
 
         try {
+            let actualSequenceId = sequence_id;
+
+            // Check if sequence exists and is valid
+            if (sequence_id) {
+                const existingSequence = await this.sequentialThinking.getThinkingSequence(sequence_id);
+                if (!existingSequence || existingSequence.is_complete) {
+                    actualSequenceId = null; // Force creation of new sequence
+                }
+            }
+
+            // Auto-create new sequence if no valid sequence_id and project context provided
+            if (!actualSequenceId && project_name) {
+                const project = await this._getOrCreateProject(project_name);
+                const session = await this._getOrCreateSession(project.id, "default");
+                
+                const autoSequenceName = sequence_name || `auto-thinking-${Date.now()}`;
+                const autoGoal = goal || "Continuing structured reasoning process";
+                
+                const newSequence = await this.sequentialThinking.startThinkingSequence(
+                    project.id,
+                    session.id,
+                    autoSequenceName,
+                    {
+                        description: "Auto-created sequence for continuous thinking",
+                        goal: autoGoal
+                    }
+                );
+                
+                actualSequenceId = newSequence.id;
+                
+                this.logger.info(`Auto-created new thinking sequence: ${autoSequenceName}`, {
+                    sequenceId: actualSequenceId,
+                    projectName: project_name,
+                    originalSequenceId: sequence_id
+                });
+            }
+
+            if (!actualSequenceId) {
+                return {
+                    content: [{
+                        type: "text",
+                        text: "No valid sequence_id provided and insufficient context to create new sequence. Please provide either a valid sequence_id or project_name to auto-create a new sequence."
+                    }],
+                    isError: true
+                };
+            }
+
             const thought = await this.sequentialThinking.addThought(
-                sequence_id,
+                actualSequenceId,
                 content,
                 {
                     thoughtType: thought_type,
@@ -2246,10 +3268,14 @@ ${analytics}
                 }
             );
 
+            const sequenceInfo = actualSequenceId !== sequence_id ? 
+                `\n🆕 Auto-created new sequence (ID: ${actualSequenceId}) because original sequence was invalid/complete.\n` : 
+                '';
+
             return {
                 content: [{
                     type: "text",
-                    text: `Added thought ${thought.thought_number}/${thought.total_thoughts}\n\n` +
+                    text: `Added thought ${thought.thought_number}/${thought.total_thoughts} to sequence ${actualSequenceId}${sequenceInfo}\n` +
                           `Type: ${thought_type}\n` +
                           `Confidence: ${(confidence_level * 100).toFixed(0)}%\n` +
                           `Content: ${content}\n\n` +
@@ -2554,9 +3580,10 @@ ${analytics}
         }
     }
 
-    async _getNextTask(args) {
+    async _getPendingTasks(args) {
         const {
             project_name,
+            limit = 10,
             include_context = true,
             task_type_filter
         } = args;
@@ -2576,16 +3603,16 @@ ${analytics}
                 WHERE m.project_id = $1 
                 AND m.memory_type = 'task'
                 ORDER BY m.importance_score DESC, m.created_at ASC
-                LIMIT 10
+                LIMIT $2
             `;
 
-            const result = await this.db.query(query, [project.id]);
+            const result = await this.db.query(query, [project.id, limit]);
 
             if (result.rows.length === 0) {
                 return {
                     content: [{
                         type: "text",
-                        text: `No pending tasks found for project "${project_name}".`
+                        text: `No tasks found for project "${project_name}".`
                     }]
                 };
             }
@@ -2596,7 +3623,8 @@ ${analytics}
                 return {
                     ...taskData,
                     memory_id: row.memory_id,
-                    priority_score: row.priority_score
+                    priority_score: row.priority_score,
+                    created_at: row.created_at
                 };
             }).filter(task => task.status === 'pending');
 
@@ -2614,42 +3642,85 @@ ${analytics}
                 };
             }
 
-            const nextTask = tasks[0];
-            let context = {};
-
-            // Load context if requested
-            if (include_context && nextTask.context_requirements) {
-                for (const memType of nextTask.context_requirements) {
-                    const memories = await this._searchMemoriesByType(project_name, memType, 3);
-                    context[memType] = memories;
+            // Load global context if requested (for efficiency, load once for all tasks)
+            let globalContext = {};
+            if (include_context) {
+                try {
+                    // Get recent project memories for context
+                    const recentMemories = await this._searchMemoriesInternal(
+                        project_name, 
+                        project_name, 
+                        null, 
+                        5, 
+                        0.3
+                    );
+                    if (recentMemories && recentMemories.length > 50) {
+                        globalContext.recent_project_context = recentMemories.substring(0, 300);
+                    }
+                } catch (error) {
+                    this.logger.warn('Could not load global context:', error.message);
                 }
             }
+
+            // Format output for multiple tasks
+            let responseText = `# Pending Tasks for ${project_name}\n\n`;
+            responseText += `**Found ${tasks.length} pending task${tasks.length > 1 ? 's' : ''} (sorted by priority)**\n\n`;
+            
+            tasks.forEach((task, index) => {
+                const priorityLabel = task.priority_score >= 0.8 ? '🔥 HIGH' : 
+                                    task.priority_score >= 0.6 ? '🟡 MEDIUM' : '🟢 LOW';
+                
+                responseText += `## ${index + 1}. ${task.title}\n`;
+                responseText += `**Priority:** ${priorityLabel} (${task.priority_score.toFixed(2)})\n`;
+                responseText += `**Category:** ${task.category}\n`;
+                responseText += `**Memory ID:** ${task.memory_id}\n`;
+                if (task.estimated_hours) {
+                    responseText += `**Estimated Hours:** ${task.estimated_hours}\n`;
+                }
+                if (task.due_date) {
+                    responseText += `**Due Date:** ${task.due_date}\n`;
+                }
+                if (task.tags && task.tags.length > 0) {
+                    responseText += `**Tags:** ${task.tags.join(', ')}\n`;
+                }
+                responseText += `**Description:** ${task.description || 'No description provided'}\n`;
+                
+                if (task.acceptance_criteria && task.acceptance_criteria.length > 0) {
+                    responseText += `**Acceptance Criteria:**\n`;
+                    task.acceptance_criteria.forEach(criteria => {
+                        responseText += `- ${criteria}\n`;
+                    });
+                }
+                
+                responseText += '\n---\n\n';
+            });
+
+            // Add global context if available
+            if (include_context && globalContext.recent_project_context) {
+                responseText += `## Recent Project Context\n${globalContext.recent_project_context}\n\n`;
+            }
+
+            // Add helpful commands
+            responseText += `## Next Steps\n`;
+            responseText += `- Update task status: \`update_task(task_id: "<memory_id>", status: "in_progress")\`\n`;
+            responseText += `- Get specific task details: \`get_memory_by_id(memory_id: <id>)\`\n`;
+            responseText += `- Search related memories: \`search_memories(query: "<task topic>")\`\n`;
 
             return {
                 content: [{
                     type: "text",
-                    text: `Next Task: ${nextTask.title}\n` +
-                          `Priority Score: ${nextTask.priority_score.toFixed(2)}\n` +
-                          `Category: ${nextTask.category}\n` +
-                          `Status: ${nextTask.status}\n\n` +
-                          `Description: ${nextTask.description || 'No description provided'}\n\n` +
-                          `${include_context && Object.keys(context).length > 0 ? 
-                            `Required Context Loaded:\n${Object.entries(context).map(([type, mems]) => 
-                                `- ${type}: ${mems.length} memories`).join('\n')}\n\n` : ''
-                          }` +
-                          `${nextTask.estimated_hours ? `Estimated Hours: ${nextTask.estimated_hours}\n` : ''}` +
-                          `${nextTask.due_date ? `Due Date: ${nextTask.due_date}\n` : ''}` +
-                          `${nextTask.tags ? `Tags: ${nextTask.tags.join(', ')}\n` : ''}`
+                    text: responseText
                 }],
-                task: nextTask,
-                context: context
+                tasks: tasks,
+                total_tasks: tasks.length,
+                context: globalContext
             };
 
         } catch (error) {
             return {
                 content: [{
                     type: "text",
-                    text: `Error getting next task: ${error.message}`
+                    text: `Error getting pending tasks: ${error.message}`
                 }],
                 isError: true
             };
@@ -2664,6 +3735,17 @@ ${analytics}
         } = args;
 
         try {
+            // Validate task_id is numeric
+            if (!/^\d+$/.test(task_id)) {
+                return {
+                    content: [{
+                        type: "text",
+                        text: `Invalid task_id "${task_id}". Expected a numeric memory ID (e.g., "123"). Use the memory ID returned when the task was created via store_memory or create_tasks.`
+                    }],
+                    isError: true
+                };
+            }
+
             // Find the task memory
             const query = `
                 SELECT id, content, project_id
@@ -2856,211 +3938,6 @@ ${analytics}
         return result.rows[0]?.name || 'unknown';
     }
 
-    async _suggestTasks(args) {
-        const {
-            project_name,
-            analysis_depth = 'standard',
-            max_suggestions = 10
-        } = args;
-
-        try {
-            // Basic project analysis and suggestions
-            const projectAnalysis = await this.analyzeProjectBasic(project_name);
-            const suggestions = await this.generateBasicSuggestions(projectAnalysis, max_suggestions);
-
-            return {
-                content: [{
-                    type: "text",
-                    text: `AI Analysis for "${project_name}":\n\n` +
-                          `Project Health: ${projectAnalysis.health_score}/10\n` +
-                          `Analysis Depth: ${analysis_depth}\n\n` +
-                          `Suggested ${suggestions.length} tasks based on project analysis:\n\n${
-                              suggestions.map((s, i) => 
-                                  `${i+1}. **${s.title}** (${s.category})\n` +
-                                  `   Priority: ${s.priority.urgency}/${s.priority.impact}\n` +
-                                  `   Effort: ${s.estimated_hours}h\n` +
-                                  `   Reason: ${s.reasoning}\n`
-                              ).join('\n')
-                          }\n\nUse create_tasks tool with source_type="ai_suggested" to add these suggestions.`
-                }],
-                suggestions: suggestions,
-                analysis: projectAnalysis
-            };
-
-        } catch (error) {
-            return {
-                content: [{
-                    type: "text",
-                    text: `Error generating task suggestions: ${error.message}`
-                }],
-                isError: true
-            };
-        }
-    }
-
-    async analyzeProjectBasic(projectName) {
-        const project = await this._getOrCreateProject(projectName);
-        
-        // Get project metrics
-        const memoriesResult = await this.db.query(
-            `SELECT memory_type, COUNT(*) as count, AVG(importance_score) as avg_importance
-             FROM memories 
-             WHERE project_id = $1 
-             GROUP BY memory_type
-             ORDER BY count DESC`,
-            [project.id]
-        );
-
-        const memoryStats = {};
-        let totalMemories = 0;
-        let avgImportance = 0;
-
-        for (const row of memoriesResult.rows) {
-            memoryStats[row.memory_type] = {
-                count: parseInt(row.count),
-                avg_importance: parseFloat(row.avg_importance_score)
-            };
-            totalMemories += parseInt(row.count);
-            avgImportance += parseFloat(row.avg_importance_score) * parseInt(row.count);
-        }
-
-        if (totalMemories > 0) {
-            avgImportance = avgImportance / totalMemories;
-        }
-
-        // Calculate health score
-        let healthScore = 5; // Base score
-
-        // Bonus for having key documentation
-        if (memoryStats.project_brief) healthScore += 1;
-        if (memoryStats.architecture) healthScore += 1;
-        if (memoryStats.requirements) healthScore += 1;
-
-        // Bonus for testing and quality
-        if (memoryStats.code && memoryStats.code.count > 0) {
-            const testRatio = (memoryStats.test?.count || 0) / memoryStats.code.count;
-            if (testRatio > 0.3) healthScore += 1;
-        }
-
-        // Penalty for high bug count
-        if (memoryStats.bug && memoryStats.bug.count > totalMemories * 0.2) {
-            healthScore -= 1;
-        }
-
-        return {
-            project_name: projectName,
-            total_memories: totalMemories,
-            memory_breakdown: memoryStats,
-            avg_importance: avgImportance,
-            health_score: Math.min(10, Math.max(1, healthScore)),
-            has_documentation: !!(memoryStats.project_brief || memoryStats.requirements),
-            has_architecture: !!memoryStats.architecture,
-            test_coverage_estimated: memoryStats.code ? 
-                ((memoryStats.test?.count || 0) / memoryStats.code.count * 100) : 0
-        };
-    }
-
-    async generateBasicSuggestions(analysis, maxSuggestions) {
-        const suggestions = [];
-
-        // Documentation suggestions
-        if (!analysis.has_documentation) {
-            suggestions.push({
-                title: "Create project documentation",
-                description: "Add project brief and requirements documentation to improve project clarity",
-                category: "documentation",
-                priority: { urgency: "medium", impact: "high", effort: "medium" },
-                estimated_hours: 4,
-                reasoning: "No project documentation found"
-            });
-        }
-
-        if (!analysis.has_architecture) {
-            suggestions.push({
-                title: "Document system architecture",
-                description: "Create architecture documentation showing system design and component relationships",
-                category: "documentation", 
-                priority: { urgency: "medium", impact: "high", effort: "medium" },
-                estimated_hours: 6,
-                reasoning: "No architecture documentation found"
-            });
-        }
-
-        // Testing suggestions
-        if (analysis.test_coverage_estimated < 50) {
-            suggestions.push({
-                title: "Improve test coverage",
-                description: `Increase test coverage from ${analysis.test_coverage_estimated.toFixed(1)}% to at least 70%`,
-                category: "testing",
-                priority: { urgency: "high", impact: "high", effort: "high" },
-                estimated_hours: 16,
-                reasoning: `Low test coverage (${analysis.test_coverage_estimated.toFixed(1)}%)`
-            });
-        }
-
-        // Quality improvements
-        if (analysis.memory_breakdown.bug && analysis.memory_breakdown.bug.count > 3) {
-            suggestions.push({
-                title: "Address outstanding bugs",
-                description: `Fix ${analysis.memory_breakdown.bug.count} known bugs to improve system stability`,
-                category: "bug",
-                priority: { urgency: "high", impact: "medium", effort: "medium" },
-                estimated_hours: analysis.memory_breakdown.bug.count * 2,
-                reasoning: `${analysis.memory_breakdown.bug.count} bugs found in memory`
-            });
-        }
-
-        // Code organization
-        if (analysis.memory_breakdown.code && analysis.memory_breakdown.code.count > 10) {
-            suggestions.push({
-                title: "Refactor and organize codebase",
-                description: "Review and refactor code for better maintainability and organization",
-                category: "refactor",
-                priority: { urgency: "medium", impact: "medium", effort: "high" },
-                estimated_hours: 20,
-                reasoning: "Large codebase may benefit from refactoring"
-            });
-        }
-
-        // Performance optimization
-        if (analysis.memory_breakdown.implementation_notes && 
-            analysis.memory_breakdown.implementation_notes.avg_importance < 0.6) {
-            suggestions.push({
-                title: "Review and optimize implementation",
-                description: "Review implementation notes and optimize for better performance",
-                category: "optimization",
-                priority: { urgency: "medium", impact: "medium", effort: "medium" },
-                estimated_hours: 12,
-                reasoning: "Implementation notes suggest optimization opportunities"
-            });
-        }
-
-        // General improvements
-        if (analysis.avg_importance < 0.6) {
-            suggestions.push({
-                title: "Review and prioritize project memories",
-                description: "Review stored memories and update importance scores for better organization",
-                category: "feature",
-                priority: { urgency: "low", impact: "medium", effort: "low" },
-                estimated_hours: 4,
-                reasoning: "Low average memory importance suggests need for review"
-            });
-        }
-
-        // Security review
-        if (analysis.total_memories > 20) {
-            suggestions.push({
-                title: "Conduct security review",
-                description: "Perform comprehensive security review of the system",
-                category: "feature",
-                priority: { urgency: "medium", impact: "high", effort: "medium" },
-                estimated_hours: 8,
-                reasoning: "Mature project should have regular security reviews"
-            });
-        }
-
-        return suggestions.slice(0, maxSuggestions);
-    }
 
     /**
      * Get comprehensive learning insights
@@ -3071,7 +3948,6 @@ ${analytics}
             insight_type, 
             min_confidence = 0.6, 
             actionable_only = false, 
-            priority, 
             limit = 20 
         } = args;
 
@@ -3095,31 +3971,19 @@ ${analytics}
             whereConditions.push('confidence_level >= $' + (queryParams.length + 1));
             queryParams.push(min_confidence);
 
-            // Actionable filter
+            // Actionable filter - check if actionable_advice exists
             if (actionable_only) {
-                whereConditions.push('actionable = true');
-            }
-
-            // Priority filter
-            if (priority) {
-                whereConditions.push('priority = $' + (queryParams.length + 1));
-                queryParams.push(priority);
+                whereConditions.push('actionable_advice IS NOT NULL AND LENGTH(TRIM(actionable_advice)) > 0');
             }
 
             const query = `
                 SELECT 
                     id, insight_type, insight_category, insight_title, insight_description,
                     confidence_level, evidence_strength, projects_involved, 
-                    metadata, actionable, priority, last_reinforced
+                    metadata, actionable_advice, tags, last_reinforced
                 FROM meta_insights
                 WHERE ${whereConditions.join(' AND ')}
                 ORDER BY 
-                    CASE priority 
-                        WHEN 'critical' THEN 1 
-                        WHEN 'high' THEN 2 
-                        WHEN 'medium' THEN 3 
-                        ELSE 4 
-                    END,
                     confidence_level DESC,
                     evidence_strength DESC
                 LIMIT $${queryParams.length + 1}
@@ -3144,8 +4008,8 @@ ${analytics}
                     confidence: insight.confidence_level,
                     evidence_strength: insight.evidence_strength,
                     projects: insight.projects_involved,
-                    actionable: insight.actionable,
-                    priority: insight.priority,
+                    actionable_advice: insight.actionable_advice,
+                    tags: insight.tags,
                     metadata: insight.metadata,
                     last_reinforced: insight.last_reinforced
                 });
@@ -3164,18 +4028,19 @@ ${Object.entries(groupedInsights).map(([type, insights]) => `
 ### ${type.replace(/_/g, ' ').toUpperCase()} (${insights.length})
 
 ${insights.map(insight => `
-**${insight.title}** ${insight.actionable ? '🎯' : ''} ${insight.priority === 'high' ? '⚠️' : insight.priority === 'critical' ? '🚨' : ''}
-- *Confidence: ${Math.round(insight.confidence * 100)}% | Evidence: ${insight.evidence_strength} points*
-- Projects: ${insight.projects.join(', ')}
+**${insight.title}** ${insight.actionable_advice ? '🎯' : ''}
+- *Confidence: ${Math.round(insight.confidence * 100)}% | Evidence: ${insight.evidence_strength.toFixed(2)} points*
+- Projects: ${insight.projects?.join(', ') || 'N/A'}
 - ${insight.description}
-${insight.actionable ? `- 💡 **Action Required** (Priority: ${insight.priority})` : ''}
+${insight.actionable_advice ? `- 💡 **Actionable Advice**: ${insight.actionable_advice}` : ''}
+${insight.tags?.length > 0 ? `- Tags: ${insight.tags.join(', ')}` : ''}
 `).join('')}`).join('')}
 
 ## Statistics
-- **Actionable Insights**: ${result.rows.filter(i => i.actionable).length}
-- **High Priority**: ${result.rows.filter(i => i.priority === 'high').length}
+- **Actionable Insights**: ${result.rows.filter(i => i.actionable_advice && i.actionable_advice.trim().length > 0).length}
 - **Cross-Project Insights**: ${result.rows.filter(i => i.projects_involved?.length > 1).length}
-- **Average Confidence**: ${result.rows.length > 0 ? Math.round(result.rows.reduce((sum, i) => sum + i.confidence_level, 0) / result.rows.length * 100) : 0}%`
+- **Average Confidence**: ${result.rows.length > 0 ? Math.round(result.rows.reduce((sum, i) => sum + i.confidence_level, 0) / result.rows.length * 100) : 0}%
+- **Average Evidence Strength**: ${result.rows.length > 0 ? (result.rows.reduce((sum, i) => sum + i.evidence_strength, 0) / result.rows.length).toFixed(2) : 0}`
                 }]
             };
         } catch (error) {
@@ -3312,153 +4177,291 @@ ${result.rows.slice(0, 5).map((p, i) => `${i + 1}. **${p.pattern_name}** (${p.fr
         }
     }
 
-    /**
-     * Trigger immediate learning analysis
-     */
-    async _triggerLearningAnalysis(args) {
-        const { project_name, analysis_type = 'pattern_detection', memory_limit = 50 } = args;
-
-        try {
-            // Get recent memories to analyze
-            let query = `
-                SELECT m.id, m.project_id, m.content, m.memory_type, p.name as project_name
-                FROM memories m 
-                JOIN projects p ON m.project_id = p.id
-                WHERE m.created_at > NOW() - INTERVAL '7 days'
-            `;
-            const queryParams = [];
-
-            if (project_name) {
-                query += ' AND p.name = $1';
-                queryParams.push(project_name);
+    // Helper method to parse existing brief content into sections
+    _parseExistingBrief(briefContent) {
+        const sections = {};
+        
+        // Extract sections using regex patterns
+        const sectionPatterns = {
+            planning: /## Planning([\s\S]*?)(?=##|$)/,
+            technical: /## Technical([\s\S]*?)(?=##|$)/,
+            progress: /## Progress([\s\S]*?)(?=##|$)/,
+            requirements: /## Requirements([\s\S]*?)(?=##|$)/,
+            architecture: /## Architecture([\s\S]*?)(?=##|$)/,
+            timeline: /## Timeline([\s\S]*?)(?=##|$)/,
+            risks: /## Risks & Mitigation([\s\S]*?)(?=##|$)/
+        };
+        
+        for (const [sectionName, pattern] of Object.entries(sectionPatterns)) {
+            const match = briefContent.match(pattern);
+            if (match) {
+                sections[sectionName] = match[1].trim();
             }
-
-            query += ` ORDER BY m.created_at DESC LIMIT $${queryParams.length + 1}`;
-            queryParams.push(memory_limit);
-
-            const memoriesResult = await this.db.query(query, queryParams);
-
-            if (memoriesResult.rows.length === 0) {
-                return {
-                    content: [{
-                        type: "text",
-                        text: `No recent memories found to analyze${project_name ? ` for project: ${project_name}` : ''}.`
-                    }]
-                };
-            }
-
-            // Queue analysis tasks
-            let tasksQueued = 0;
-            for (const memory of memoriesResult.rows) {
-                await this.learningPipeline.queueLearningTask(analysis_type, {
-                    memoryId: memory.id,
-                    projectId: memory.project_id,
-                    content: memory.content,
-                    trigger: 'manual_analysis'
-                }, 2); // High priority for manual triggers
-                tasksQueued++;
-            }
-
-            // Trigger immediate processing
-            const processedTasks = await this.learningPipeline.processLearningQueue(tasksQueued);
-
-            return {
-                content: [{
-                    type: "text",
-                    text: `# Learning Analysis Triggered
-
-## Request Summary
-- **Analysis Type**: ${analysis_type.replace(/_/g, ' ')}
-- **Project**: ${project_name || 'All projects'}
-- **Memories Analyzed**: ${memoriesResult.rows.length}
-- **Tasks Queued**: ${tasksQueued}
-- **Tasks Processed**: ${processedTasks}
-
-## Status
-✅ Analysis has been queued and ${processedTasks > 0 ? 'processing has begun' : 'will be processed shortly'}.
-
-${processedTasks > 0 ? `
-**${processedTasks}** tasks were processed immediately. You can use the following tools to view results:
-- \`get_learning_insights\` - View generated insights
-- \`get_pattern_analysis\` - View detected patterns
-- \`get_learning_status\` - Check processing status
-` : `
-Tasks are queued for processing. Check status with \`get_learning_status\` or wait a few minutes and use \`get_learning_insights\` to view results.
-`}
-
-## Next Steps
-1. Wait 2-5 minutes for processing to complete
-2. Use \`get_learning_insights\` to see new insights
-3. Use \`get_pattern_analysis\` to see detected patterns`
-                }]
-            };
-        } catch (error) {
-            this.logger.error('Failed to trigger learning analysis:', error);
-            throw error;
         }
+        
+        return sections;
+    }
+
+    // Enhanced _formatProjectBrief to include update metadata
+    _formatProjectBrief(project_name, description, sections, metadata = null) {
+        let brief = `# ${project_name} - Project Brief\n\n`;
+        brief += `**Project Description:** ${description}\n`;
+        brief += `**Created:** ${new Date().toISOString().split('T')[0]}\n`;
+        
+        if (metadata) {
+            brief += `**Last Updated:** ${new Date().toISOString().split('T')[0]}\n`;
+            brief += `**Update Reason:** ${metadata.updateReason}\n`;
+            if (metadata.updatedSections && metadata.updatedSections.length > 0) {
+                brief += `**Updated Sections:** ${metadata.updatedSections.join(', ')}\n`;
+            }
+        }
+        
+        brief += '\n---\n\n';
+        
+        // Add sections in logical order
+        const sectionOrder = ['planning', 'requirements', 'technical', 'architecture', 'timeline', 'risks', 'progress'];
+        
+        for (const sectionName of sectionOrder) {
+            if (sections[sectionName]) {
+                brief += `${sections[sectionName]}\n\n---\n\n`;
+            }
+        }
+        
+        brief += `## Additional Resources\n`;
+        brief += `- Use \`search_memories\` to find related project experiences\n`;
+        brief += `- Use \`get_learning_insights\` for technology recommendations\n`;
+        brief += `- Use \`create_tasks\` to break down implementation work\n`;
+        brief += `- Use \`get_pattern_analysis\` to identify relevant coding patterns\n`;
+        brief += `- Use \`update_project_brief\` to keep this brief current as the project evolves\n\n`;
+        
+        return brief;
     }
 
     /**
-     * Get learning pipeline status
+     * Analyze pattern-outcome correlations
      */
-    async _getLearningStatus(args) {
-        const { include_queue = true, include_metrics = true } = args;
+    async _analyzePatternOutcomes(args) {
+        this._debugLog('analyze_pattern_outcomes', 'START', { args });
+        
+        const { 
+            project_name, 
+            time_range = "90 days", 
+            pattern_category,
+            min_sample_size = 3
+        } = args;
 
-        try {
-            const status = await this.learningPipeline.getStatus();
-            
-            let statusText = `# Learning Pipeline Status
+        // Build context for analysis
+        const context = {
+            timeRange: time_range,
+            minSampleSize: min_sample_size
+        };
 
-## Current State
-- **Status**: ${status.status}
-- **Real-time Processing**: ${status.realTimeEnabled ? '✅ Enabled' : '❌ Disabled'}
-- **Scheduled Processing**: ${status.scheduledEnabled ? '✅ Enabled' : '❌ Disabled'}
-- **Memory Buffer**: ${status.memoryBufferSize} pending memories
+        if (project_name) {
+            // Get project ID if project name provided
+            const project = await this._getOrCreateProject(project_name);
+            context.projectId = project.id;
+        }
 
-`;
+        if (pattern_category) {
+            context.patternCategory = pattern_category;
+        }
 
-            if (include_queue && status.queue) {
-                statusText += `## Processing Queue
-${status.queue.map(q => `- **${q.status}**: ${q.count} tasks`).join('\n')}
+        // Call learning pipeline's correlation analysis
+        const correlations = await this.learningPipeline.analyzePatternOutcomeCorrelations(context);
 
-`;
-            }
-
-            if (include_metrics) {
-                if (status.patterns && Object.keys(status.patterns).length > 0) {
-                    statusText += `## Pattern Metrics
-- **Total Patterns**: ${status.patterns.total_patterns || 0}
-- **Average Confidence**: ${status.patterns.avg_confidence ? Math.round(status.patterns.avg_confidence * 100) + '%' : 'N/A'}
-- **Projects Covered**: ${status.patterns.unique_projects || 0}
-
-`;
-                }
-
-                if (status.insights && status.insights.length > 0) {
-                    statusText += `## Insight Metrics
-${status.insights.map(i => `- **${i.insight_type}**: ${i.count} insights`).join('\n')}
-
-`;
-                }
-            }
-
-            if (status.lastProcessed) {
-                statusText += `## Last Processing Times
-${Object.entries(status.lastProcessed).map(([type, time]) => 
-                    `- **${type}**: ${time ? new Date(time).toISOString().replace('T', ' ').split('.')[0] : 'Never'}`
-                ).join('\n')}
-`;
-            }
-
+        if (correlations.length === 0) {
             return {
-                content: [{
-                    type: "text",
-                    text: statusText
+                content: [{ 
+                    type: "text", 
+                    text: `No pattern-outcome correlations found with the specified criteria. Try expanding the time range or reducing the minimum sample size.` 
                 }]
             };
-        } catch (error) {
-            this.logger.error('Failed to get learning status:', error);
-            throw error;
         }
+
+        // Format results
+        let text = `# Pattern-Outcome Correlation Analysis\n\n`;
+        text += `**Analysis Period:** ${time_range}\n`;
+        text += `**Minimum Sample Size:** ${min_sample_size}\n`;
+        if (project_name) text += `**Project:** ${project_name}\n`;
+        if (pattern_category) text += `**Pattern Category:** ${pattern_category}\n`;
+        text += `**Correlations Found:** ${correlations.length}\n\n`;
+
+        // Group by correlation strength
+        const strongPositive = correlations.filter(c => c.correlation_strength === 'strong_positive');
+        const strongNegative = correlations.filter(c => c.correlation_strength === 'strong_negative');
+        const moderate = correlations.filter(c => c.correlation_strength.includes('moderate'));
+        const neutral = correlations.filter(c => c.correlation_strength === 'neutral');
+
+        if (strongPositive.length > 0) {
+            text += `## 🎯 Strong Positive Correlations (Patterns to Promote)\n\n`;
+            for (const corr of strongPositive) {
+                text += `### ${corr.pattern_name}\n`;
+                text += `- **Category:** ${corr.pattern_category}\n`;
+                text += `- **Success Rate:** ${corr.success_rate ? (corr.success_rate * 100).toFixed(1) + '%' : 'N/A'}\n`;
+                text += `- **Sample Size:** ${corr.sample_size} outcomes\n`;
+                text += `- **Confidence:** ${(corr.confidence_score * 100).toFixed(1)}%\n`;
+                text += `- **Analysis Method:** ${corr.analysis_method}\n\n`;
+                if (corr.insights) {
+                    text += `**Insights:**\n${corr.insights}\n\n`;
+                }
+                text += `---\n\n`;
+            }
+        }
+
+        if (strongNegative.length > 0) {
+            text += `## ⚠️ Strong Negative Correlations (Patterns to Review)\n\n`;
+            for (const corr of strongNegative) {
+                text += `### ${corr.pattern_name}\n`;
+                text += `- **Category:** ${corr.pattern_category}\n`;
+                text += `- **Success Rate:** ${corr.success_rate ? (corr.success_rate * 100).toFixed(1) + '%' : 'N/A'}\n`;
+                text += `- **Sample Size:** ${corr.sample_size} outcomes\n`;
+                text += `- **Confidence:** ${(corr.confidence_score * 100).toFixed(1)}%\n`;
+                text += `- **Analysis Method:** ${corr.analysis_method}\n\n`;
+                if (corr.insights) {
+                    text += `**Insights:**\n${corr.insights}\n\n`;
+                }
+                text += `---\n\n`;
+            }
+        }
+
+        if (moderate.length > 0) {
+            text += `## 📊 Moderate Correlations\n\n`;
+            for (const corr of moderate) {
+                text += `- **${corr.pattern_name}** (${corr.pattern_category}): `;
+                text += `${corr.success_rate ? (corr.success_rate * 100).toFixed(1) + '% success, ' : ''}`;
+                text += `${corr.sample_size} outcomes, ${(corr.confidence_score * 100).toFixed(1)}% confidence\n`;
+            }
+            text += `\n`;
+        }
+
+        if (neutral.length > 0) {
+            text += `## 🔄 Neutral Patterns\n\n`;
+            text += `${neutral.length} patterns show no clear correlation with success/failure.\n\n`;
+        }
+
+        text += `## Recommendations\n\n`;
+        if (strongPositive.length > 0) {
+            text += `- **Promote:** Consider documenting and encouraging the use of strong positive patterns\n`;
+        }
+        if (strongNegative.length > 0) {
+            text += `- **Review:** Investigate strong negative patterns for potential refactoring opportunities\n`;
+        }
+        text += `- **Monitor:** Continue tracking outcomes to build more robust correlation data\n`;
+        text += `- **Document:** Use \`record_pattern_outcome\` to record outcomes when project events occur\n\n`;
+
+        return {
+            content: [{ 
+                type: "text", 
+                text: text
+            }]
+        };
     }
+
+    /**
+     * Record a pattern outcome
+     */
+    async _recordPatternOutcome(args) {
+        this._debugLog('record_pattern_outcome', 'START', { args });
+        
+        const { 
+            project_name, 
+            pattern_name, 
+            outcome_type, 
+            outcome_description,
+            outcome_value,
+            metrics = {}
+        } = args;
+
+        // Get project
+        const project = await this._getOrCreateProject(project_name);
+
+        // Find the pattern by name
+        const patternResult = await this.db.query(`
+            SELECT id FROM coding_patterns 
+            WHERE pattern_name ILIKE $1 
+            ORDER BY confidence_score DESC 
+            LIMIT 1
+        `, [pattern_name]);
+
+        if (patternResult.rows.length === 0) {
+            return {
+                content: [{ 
+                    type: "text", 
+                    text: `Pattern "${pattern_name}" not found. Please ensure the pattern exists in the system.` 
+                }]
+            };
+        }
+
+        const patternId = patternResult.rows[0].id;
+        
+        // Record the outcome
+        await this.learningPipeline.recordPatternOutcome(
+            project.id, 
+            patternId, 
+            outcome_type, 
+            {
+                description: outcome_description,
+                value: outcome_value,
+                metrics: metrics
+            }
+        );
+
+        return {
+            content: [{ 
+                type: "text", 
+                text: `Recorded ${outcome_type} outcome for pattern "${pattern_name}" in project "${project_name}". This data will be used in future correlation analyses.` 
+            }]
+        };
+    }
+
+    /**
+     * Trigger outcome analysis for project events
+     */
+    async _triggerOutcomeAnalysis(args) {
+        this._debugLog('trigger_outcome_analysis', 'START', { args });
+        
+        const { 
+            project_name, 
+            event_type, 
+            event_description,
+            event_data = {}
+        } = args;
+
+        // Get project
+        const project = await this._getOrCreateProject(project_name);
+
+        // Prepare event data with description
+        const fullEventData = {
+            description: event_description,
+            ...event_data
+        };
+
+        // Trigger the outcome analysis
+        await this.learningPipeline.triggerOutcomeAnalysis(
+            project.id, 
+            event_type, 
+            fullEventData
+        );
+
+        // Check if this was a significant event that triggered correlation analysis
+        const significantEvents = ['project_completion', 'major_bug', 'performance_improvement'];
+        const triggeredCorrelationAnalysis = significantEvents.includes(event_type);
+
+        let message = `Recorded ${event_type} event for project "${project_name}". `;
+        message += `Pattern outcomes have been updated based on this event.`;
+        
+        if (triggeredCorrelationAnalysis) {
+            message += ` Since this was a significant event, pattern-outcome correlation analysis has been triggered automatically.`;
+        }
+
+        message += ` Use \`analyze_pattern_outcomes\` to view the latest correlation insights.`;
+
+        return {
+            content: [{ 
+                type: "text", 
+                text: message
+            }]
+        };
+    }
+
 }

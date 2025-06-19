@@ -334,7 +334,7 @@ function MetaLearning() {
           </Typography>
           
           <Grid container spacing={3}>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Box textAlign="center">
                 <Typography variant="h3" color="primary.main" fontWeight="bold">
                   {status.total_patterns}
@@ -345,7 +345,7 @@ function MetaLearning() {
               </Box>
             </Grid>
             
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Box textAlign="center">
                 <Typography variant="h3" color="success.main" fontWeight="bold">
                   {status.total_insights}
@@ -356,7 +356,7 @@ function MetaLearning() {
               </Box>
             </Grid>
             
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Box textAlign="center">
                 <Typography variant="h3" color="warning.main" fontWeight="bold">
                   {status.queue_size}
@@ -367,7 +367,7 @@ function MetaLearning() {
               </Box>
             </Grid>
             
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Box textAlign="center">
                 <Typography variant="h3" color="info.main" fontWeight="bold">
                   {Math.round(status.processing_rate * 100)}%
@@ -424,7 +424,7 @@ function MetaLearning() {
       <TabPanel value={tabValue} index={0}>
         <Grid container spacing={3}>
           {insights.map((insight) => (
-            <Grid item xs={12} md={6} key={insight.id}>
+            <Grid size={{ xs: 12, md: 6 }} key={insight.id}>
               <Card sx={{ height: '100%' }}>
                 <CardContent>
                   <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'between', mb: 2 }}>
@@ -498,7 +498,7 @@ function MetaLearning() {
       <TabPanel value={tabValue} index={1}>
         <Grid container spacing={3}>
           {patterns.map((pattern) => (
-            <Grid item xs={12} lg={6} key={pattern.id}>
+            <Grid size={{ xs: 12, lg: 6 }} key={pattern.id}>
               <Card sx={{ height: '100%' }}>
                 <CardContent>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -598,7 +598,7 @@ function MetaLearning() {
         {monitoringData ? (
           <Grid container spacing={3}>
             {/* Scheduling Information */}
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
@@ -607,7 +607,7 @@ function MetaLearning() {
                   </Typography>
                   <Grid container spacing={2}>
                     {Object.entries(monitoringData.scheduling).map(([taskType, schedule]) => (
-                      <Grid item xs={12} sm={6} md={4} key={taskType}>
+                      <Grid size={{ xs: 12, sm: 6, md: 4 }} key={taskType}>
                         <Paper sx={{ p: 2, backgroundColor: schedule.isOverdue ? 'error.light' : 'background.paper' }}>
                           <Typography variant="subtitle2" gutterBottom>
                             {taskType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
@@ -641,7 +641,7 @@ function MetaLearning() {
             </Grid>
 
             {/* Memory Coverage Statistics */}
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
@@ -649,7 +649,7 @@ function MetaLearning() {
                     Memory Coverage
                   </Typography>
                   <Grid container spacing={2}>
-                    <Grid item xs={6}>
+                    <Grid size={{ xs: 6 }}>
                       <Box textAlign="center">
                         <Typography variant="h4" color="primary.main">
                           {monitoringData.memoryCoverage.totalMemories}
@@ -659,7 +659,7 @@ function MetaLearning() {
                         </Typography>
                       </Box>
                     </Grid>
-                    <Grid item xs={6}>
+                    <Grid size={{ xs: 6 }}>
                       <Box textAlign="center">
                         <Typography variant="h4" color="success.main">
                           {monitoringData.memoryCoverage.memoriesWithPatterns}
@@ -669,7 +669,7 @@ function MetaLearning() {
                         </Typography>
                       </Box>
                     </Grid>
-                    <Grid item xs={12}>
+                    <Grid size={{ xs: 12 }}>
                       <Typography variant="body2" gutterBottom>
                         Pattern Coverage: {monitoringData.memoryCoverage.patternCoveragePercent}%
                       </Typography>
@@ -686,7 +686,7 @@ function MetaLearning() {
                         value={monitoringData.memoryCoverage.processingCoveragePercent} 
                       />
                     </Grid>
-                    <Grid item xs={12}>
+                    <Grid size={{ xs: 12 }}>
                       <Typography variant="body2" sx={{ mt: 2 }}>
                         <strong>Recent Activity:</strong> {monitoringData.memoryCoverage.recentMemories} memories in last 24h
                       </Typography>
@@ -700,7 +700,7 @@ function MetaLearning() {
             </Grid>
 
             {/* Processing Progress */}
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
@@ -708,7 +708,7 @@ function MetaLearning() {
                     Processing Progress
                   </Typography>
                   <Grid container spacing={2}>
-                    <Grid item xs={6}>
+                    <Grid size={{ xs: 6 }}>
                       <Box textAlign="center">
                         <Typography variant="h4" color={
                           monitoringData.processingProgress.systemHealth === 'healthy' ? 'success.main' :
@@ -721,7 +721,7 @@ function MetaLearning() {
                         </Typography>
                       </Box>
                     </Grid>
-                    <Grid item xs={6}>
+                    <Grid size={{ xs: 6 }}>
                       <Box textAlign="center">
                         <Typography variant="h4" color="info.main">
                           {monitoringData.processingProgress.recentActivity}
@@ -731,7 +731,7 @@ function MetaLearning() {
                         </Typography>
                       </Box>
                     </Grid>
-                    <Grid item xs={12}>
+                    <Grid size={{ xs: 12 }}>
                       <Chip 
                         label={`System Health: ${monitoringData.processingProgress.systemHealth.toUpperCase()}`}
                         color={
@@ -747,7 +747,7 @@ function MetaLearning() {
             </Grid>
 
             {/* Task Performance */}
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
@@ -756,7 +756,7 @@ function MetaLearning() {
                   </Typography>
                   <Grid container spacing={2}>
                     {monitoringData.processingProgress.taskPerformance.map((task) => (
-                      <Grid item xs={12} sm={6} md={3} key={task.taskType}>
+                      <Grid size={{ xs: 12, sm: 6, md: 3 }} key={task.taskType}>
                         <Paper sx={{ p: 2 }}>
                           <Typography variant="subtitle2" gutterBottom>
                             {task.taskType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
@@ -794,7 +794,7 @@ function MetaLearning() {
             </Grid>
 
             {/* Queue Status */}
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
@@ -803,7 +803,7 @@ function MetaLearning() {
                   </Typography>
                   <Grid container spacing={2}>
                     {monitoringData.queue.map((queueItem) => (
-                      <Grid item xs={6} key={queueItem.status}>
+                      <Grid size={{ xs: 6 }} key={queueItem.status}>
                         <Box textAlign="center">
                           <Typography variant="h5" color={
                             queueItem.status === 'completed' ? 'success.main' :
@@ -824,7 +824,7 @@ function MetaLearning() {
             </Grid>
 
             {/* Memory Type Breakdown */}
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
@@ -859,7 +859,7 @@ function MetaLearning() {
             </Grid>
 
             {/* System Status */}
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <Alert 
                 severity={
                   monitoringData.processingProgress.systemHealth === 'healthy' ? 'success' :

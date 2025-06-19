@@ -200,7 +200,7 @@ const MCPTools = () => {
       {/* MCP Status Overview */}
       <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 4 }}>
         <Grid container spacing={3}>
-          <Grid item xs={12} md={6}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Typography variant="h6" gutterBottom>
               <Build sx={{ mr: 1, verticalAlign: 'middle' }} />
               MCP Server Status
@@ -224,7 +224,7 @@ const MCPTools = () => {
             </Stack>
           </Grid>
           
-          <Grid item xs={12} md={6}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Typography variant="h6" gutterBottom>
               <Info sx={{ mr: 1, verticalAlign: 'middle' }} />
               Quick Stats

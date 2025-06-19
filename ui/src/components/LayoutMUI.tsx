@@ -9,9 +9,7 @@ import {
   ListItemIcon,
   ListItemText,
   Typography,
-  Divider,
   Chip,
-  Paper,
 } from '@mui/material';
 import {
   Home,
@@ -21,7 +19,6 @@ import {
   Analytics,
   Search,
   AdminPanelSettings,
-  TrendingUp,
   Build,
   School,
 } from '@mui/icons-material';
@@ -36,7 +33,7 @@ const navigation = [
   { name: 'Memory Explorer', href: '/memories', icon: Storage },
   { name: 'Sequential Thinking', href: '/thinking', icon: Psychology },
   { name: 'Analytics', href: '/analytics', icon: Analytics },
-  { name: 'Search', href: '/search', icon: Search },
+
   { name: 'MCP Tools', href: '/mcp-tools', icon: Build },
   { name: 'Meta-Learning', href: '/meta-learning', icon: School },
   { name: 'Administer MCP Config', href: '/admin', icon: AdminPanelSettings },

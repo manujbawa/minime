@@ -421,7 +421,7 @@ const Administration = () => {
               const currentValue = configChanges[key] !== undefined ? configChanges[key] : config.value;
               
               return (
-                <Grid item xs={12} sm={6} md={4} key={key}>
+                <Grid size={{ xs: 12, sm: 6, md: 4 }} key={key}>
                   <Box sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
                     <Typography variant="subtitle2" gutterBottom>
                       {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
@@ -608,7 +608,7 @@ const Administration = () => {
             {/* Projects List */}
             <Grid container spacing={2}>
               {projects.map((project) => (
-                <Grid item xs={12} md={6} key={project.id}>
+                <Grid size={{ xs: 12, md: 6 }} key={project.id}>
                   <Card variant="outlined">
                     <CardContent>
                       <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
@@ -739,7 +739,7 @@ const Administration = () => {
             {/* Deletion Operations */}
             <Grid container spacing={3}>
               {/* Project-Specific Operations */}
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <Card sx={{ height: '100%' }}>
                   <CardContent>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
@@ -789,7 +789,7 @@ const Administration = () => {
               </Grid>
 
               {/* System-Wide Operations */}
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <Card sx={{ height: '100%' }}>
                   <CardContent>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
@@ -851,7 +851,7 @@ const Administration = () => {
             </Typography>
             <Grid container spacing={2}>
               {Object.entries(deletionStats).map(([key, value]) => (
-                <Grid item key={key}>
+                <Grid key={key}>
                   <Chip
                     label={`${key}: ${value}`}
                     color="info"
@@ -966,7 +966,7 @@ const Administration = () => {
           </Typography>
         </Box>
         <Grid container spacing={2}>
-          <Grid item xs={12} md={4}>
+          <Grid size={{ xs: 12, md: 4 }}>
             <Typography variant="subtitle2" color="primary.main" gutterBottom>
               System Configuration:
             </Typography>
@@ -977,7 +977,7 @@ const Administration = () => {
               <li>Performance settings require restart for full effect</li>
             </Typography>
           </Grid>
-          <Grid item xs={12} md={4}>
+          <Grid size={{ xs: 12, md: 4 }}>
             <Typography variant="subtitle2" color="secondary.main" gutterBottom>
               Data Management:
             </Typography>
@@ -988,7 +988,7 @@ const Administration = () => {
               <li>Essential reference data protected</li>
             </Typography>
           </Grid>
-          <Grid item xs={12} md={4}>
+          <Grid size={{ xs: 12, md: 4 }}>
             <Typography variant="subtitle2" color="info.main" gutterBottom>
               Best Practices:
             </Typography>

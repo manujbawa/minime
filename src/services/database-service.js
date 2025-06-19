@@ -357,7 +357,7 @@ export class DatabaseService {
         const {
             summary = null,
             embedding = null,
-            embeddingModel = 'nomic-embed-text',
+            embeddingModel = 'mxbai-embed-large',
             embeddingDimensions = null,
             importanceScore = 0.5,
             tags = [],
@@ -1076,6 +1076,174 @@ export class DatabaseService {
             await client.query('ROLLBACK');
             this.logger.error('Failed to delete all data:', error);
             throw error;
+        } finally {
+            client.release();
+        }
+    }
+
+    /**
+     * Get a database client from the pool
+     */
+    async getClient() {
+        if (!this.pool) {
+            throw new Error('Database not initialized. Call initialize() first.');
+        }
+        return await this.pool.connect();
+    }
+
+    // ============================================================================
+    // TASK MANAGEMENT METHODS (CONSOLIDATED TO TASK-TYPE MEMORIES)
+    // ============================================================================
+
+    // Get task-type memories for a project with filtering options
+    async getTasksForProject(projectId, options = {}) {
+        const client = await this.getClient();
+        try {
+            let query = `
+                SELECT 
+                    id, project_id, session_id, content, metadata, 
+                    created_at, updated_at, importance_score, tags
+                FROM memories 
+                WHERE project_id = $1 AND memory_type = 'task'
+            `;
+            
+            const params = [projectId];
+            let paramIndex = 2;
+
+            // Add status filter using metadata
+            if (options.status) {
+                query += ` AND metadata->>'status' = $${paramIndex}`;
+                params.push(options.status);
+                paramIndex++;
+            }
+
+            // Add type filter using metadata
+            if (options.type) {
+                query += ` AND metadata->>'task_type' = $${paramIndex}`;
+                params.push(options.type);
+                paramIndex++;
+            }
+
+            // Add ordering - prioritize by importance_score and creation date
+            query += ` ORDER BY `;
+            if (options.status === 'completed') {
+                query += `(metadata->>'completed_at') DESC NULLS LAST`;
+            } else {
+                query += `
+                    CASE 
+                        WHEN metadata->>'priority' = 'critical' THEN 1 
+                        WHEN metadata->>'priority' = 'high' THEN 2 
+                        WHEN metadata->>'priority' = 'medium' THEN 3 
+                        ELSE 4 
+                    END, 
+                    created_at DESC
+                `;
+            }
+
+            // Add limit and offset
+            if (options.limit) {
+                query += ` LIMIT $${paramIndex}`;
+                params.push(options.limit);
+                paramIndex++;
+            }
+
+            if (options.offset) {
+                query += ` OFFSET $${paramIndex}`;
+                params.push(options.offset);
+            }
+
+            const result = await client.query(query, params);
+            return result.rows;
+        } finally {
+            client.release();
+        }
+    }
+
+    // Get task statistics for a project using task-type memories
+    async getTaskStats(projectId) {
+        const client = await this.getClient();
+        try {
+            const result = await client.query(`
+                SELECT 
+                    COUNT(*) as total_tasks,
+                    COUNT(CASE WHEN metadata->>'status' = 'pending' THEN 1 END) as pending_tasks,
+                    COUNT(CASE WHEN metadata->>'status' = 'in_progress' THEN 1 END) as in_progress_tasks,
+                    COUNT(CASE WHEN metadata->>'status' = 'completed' THEN 1 END) as completed_tasks,
+                    COUNT(CASE WHEN metadata->>'status' = 'cancelled' THEN 1 END) as cancelled_tasks,
+                    COUNT(CASE WHEN metadata->>'task_type' = 'defect' THEN 1 END) as defects,
+                    COUNT(CASE WHEN metadata->>'task_type' = 'feature' THEN 1 END) as features,
+                    COUNT(CASE WHEN metadata->>'priority' = 'critical' THEN 1 END) as critical_tasks,
+                    COUNT(CASE WHEN metadata->>'priority' = 'high' THEN 1 END) as high_priority_tasks
+                FROM memories
+                WHERE project_id = $1 AND memory_type = 'task'
+            `, [projectId]);
+
+            return result.rows[0];
+        } finally {
+            client.release();
+        }
+    }
+
+    // Get all task-type memories across projects (for global views)
+    async getAllTasks(options = {}) {
+        const client = await this.getClient();
+        try {
+            let query = `
+                SELECT 
+                    m.id, m.project_id, m.content, m.metadata, m.created_at, 
+                    m.updated_at, m.importance_score, m.tags,
+                    p.name as project_name
+                FROM memories m
+                JOIN projects p ON m.project_id = p.id
+                WHERE m.memory_type = 'task'
+            `;
+
+            const params = [];
+            let paramIndex = 1;
+            const conditions = [];
+
+            // Add status filter
+            if (options.status) {
+                conditions.push(`m.metadata->>'status' = $${paramIndex}`);
+                params.push(options.status);
+                paramIndex++;
+            }
+
+            // Add type filter
+            if (options.type) {
+                conditions.push(`m.metadata->>'task_type' = $${paramIndex}`);
+                params.push(options.type);
+                paramIndex++;
+            }
+
+            if (conditions.length > 0) {
+                query += ' AND ' + conditions.join(' AND ');
+            }
+
+            // Add ordering
+            query += ` ORDER BY `;
+            if (options.status === 'completed') {
+                query += `(m.metadata->>'completed_at') DESC NULLS LAST`;
+            } else {
+                query += `
+                    CASE 
+                        WHEN m.metadata->>'priority' = 'critical' THEN 1 
+                        WHEN m.metadata->>'priority' = 'high' THEN 2 
+                        WHEN m.metadata->>'priority' = 'medium' THEN 3 
+                        ELSE 4 
+                    END, 
+                    m.created_at DESC
+                `;
+            }
+
+            // Add limit
+            if (options.limit) {
+                query += ` LIMIT $${paramIndex}`;
+                params.push(options.limit);
+            }
+
+            const result = await client.query(query, params);
+            return result.rows;
         } finally {
             client.release();
         }
