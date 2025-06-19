@@ -31,7 +31,7 @@ import { useNavigate } from 'react-router-dom';
 import { miniMeAPI } from '../services/api';
 import type { Project } from '../types';
 
-export function ProjectsMUI() {
+const ProjectsMUI = () => {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -315,3 +315,5 @@ export function ProjectsMUI() {
     </Box>
   );
 }
+
+export default ProjectsMUI;

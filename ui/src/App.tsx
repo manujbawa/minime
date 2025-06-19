@@ -1,19 +1,35 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
-import { CssBaseline } from '@mui/material';
+import { CssBaseline, CircularProgress, Box } from '@mui/material';
 import { theme } from './theme';
 import { LayoutMUI as Layout } from './components/LayoutMUI';
-import { Dashboard } from './pages/Dashboard';
-import { MemoryExplorer } from './pages/MemoryExplorer';
-import { AdminData } from './pages/AdminData';
-import { ProjectsMUI as Projects } from './pages/ProjectsMUI';
-import { ProjectDetails } from './pages/ProjectDetails';
-import { SequentialThinking } from './pages/SequentialThinking';
-import { Analytics } from './pages/Analytics';
-import { Search } from './pages/Search';
-import { MCPTools } from './pages/MCPTools';
-import { MetaLearning } from './pages/MetaLearning';
+
+// Lazy load all pages for code splitting - using direct default exports
+const Dashboard = React.lazy(() => import('./pages/Dashboard'));
+const MemoryExplorer = React.lazy(() => import('./pages/MemoryExplorer')); 
+const Administration = React.lazy(() => import('./pages/Administration'));
+const Projects = React.lazy(() => import('./pages/ProjectsMUI'));
+const ProjectDetails = React.lazy(() => import('./pages/ProjectDetails'));
+const SequentialThinking = React.lazy(() => import('./pages/SequentialThinking'));
+const Analytics = React.lazy(() => import('./pages/Analytics'));
+const Search = React.lazy(() => import('./pages/Search'));
+const MCPTools = React.lazy(() => import('./pages/MCPTools'));
+const MetaLearning = React.lazy(() => import('./pages/MetaLearning'));
+
+// Loading component
+const PageLoader = () => (
+  <Box sx={{ 
+    display: 'flex', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    height: '60vh',
+    flexDirection: 'column',
+    gap: 2
+  }}>
+    <CircularProgress size={48} />
+  </Box>
+);
 
 function App() {
   return (
@@ -30,19 +46,21 @@ function App() {
       `}</style>
       <BrowserRouter>
         <Layout>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/projects" element={<Projects />} />
-            <Route path="/projects/:projectName" element={<ProjectDetails />} />
-            <Route path="/memories" element={<MemoryExplorer />} />
-            <Route path="/thinking" element={<SequentialThinking />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/search" element={<Search />} />
-            <Route path="/mcp-tools" element={<MCPTools />} />
-            <Route path="/meta-learning" element={<MetaLearning />} />
-            <Route path="/admin" element={<AdminData />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/projects" element={<Projects />} />
+              <Route path="/projects/:projectName" element={<ProjectDetails />} />
+              <Route path="/memories" element={<MemoryExplorer />} />
+              <Route path="/thinking" element={<SequentialThinking />} />
+              <Route path="/analytics" element={<Analytics />} />
+              <Route path="/search" element={<Search />} />
+              <Route path="/mcp-tools" element={<MCPTools />} />
+              <Route path="/meta-learning" element={<MetaLearning />} />
+              <Route path="/admin" element={<Administration />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
         </Layout>
       </BrowserRouter>
     </ThemeProvider>

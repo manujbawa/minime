@@ -26,6 +26,10 @@ import {
   Tab,
   IconButton,
   Tooltip,
+  Switch,
+  FormControlLabel,
+  Slider,
+  TextareaAutosize,
 } from '@mui/material';
 import {
   Delete as Trash2,
@@ -43,6 +47,8 @@ import {
   Code,
   Assessment,
   Business,
+  Save,
+  RestartAlt,
 } from '@mui/icons-material';
 import { miniMeAPI } from '../services/api';
 import type { Project } from '../types';
@@ -62,6 +68,17 @@ interface TabPanelProps {
   value: number;
 }
 
+interface SystemConfig {
+  [category: string]: {
+    [key: string]: {
+      value: any;
+      description: string;
+      updated_at: string;
+      updated_by: string;
+    };
+  };
+}
+
 function TabPanel(props: TabPanelProps) {
   const { children, value, index, ...other } = props;
   return (
@@ -77,7 +94,7 @@ function TabPanel(props: TabPanelProps) {
   );
 }
 
-const AdminData = () => {
+const Administration = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -88,10 +105,19 @@ const AdminData = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDescription, setNewProjectDescription] = useState('');
+  
+  // Configuration state
+  const [configs, setConfigs] = useState<SystemConfig>({});
+  const [configLoading, setConfigLoading] = useState(false);
+  const [configChanges, setConfigChanges] = useState<{ [key: string]: any }>({});
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   useEffect(() => {
     loadProjects();
-  }, []);
+    if (activeTab === 0) {
+      loadConfigurations();
+    }
+  }, [activeTab]);
 
   const loadProjects = async () => {
     try {
@@ -99,6 +125,82 @@ const AdminData = () => {
       setProjects(response.projects);
     } catch (error) {
       setMessage({ type: 'error', text: 'Failed to load projects' });
+    }
+  };
+
+  const loadConfigurations = async () => {
+    try {
+      setConfigLoading(true);
+      const response = await fetch('/api/config');
+      const data = await response.json();
+      
+      if (data.success) {
+        setConfigs(data.configs);
+        setConfigChanges({});
+        setHasUnsavedChanges(false);
+      } else {
+        setMessage({ type: 'error', text: 'Failed to load configurations' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to load configurations' });
+    } finally {
+      setConfigLoading(false);
+    }
+  };
+
+  const handleConfigChange = (key: string, value: any) => {
+    setConfigChanges(prev => ({
+      ...prev,
+      [key]: value
+    }));
+    setHasUnsavedChanges(true);
+  };
+
+  const saveConfigurations = async () => {
+    try {
+      setConfigLoading(true);
+      const response = await fetch('/api/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ configs: configChanges })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setMessage({ type: 'success', text: `Updated ${Object.keys(configChanges).length} configuration(s)` });
+        await loadConfigurations(); // Reload to get fresh values
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Failed to save configurations' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to save configurations' });
+    } finally {
+      setConfigLoading(false);
+    }
+  };
+
+  const resetConfigurations = async (category?: string) => {
+    try {
+      setConfigLoading(true);
+      const response = await fetch('/api/config/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setMessage({ type: 'success', text: data.message });
+        await loadConfigurations();
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Failed to reset configurations' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to reset configurations' });
+    } finally {
+      setConfigLoading(false);
     }
   };
 
@@ -206,7 +308,7 @@ const AdminData = () => {
       setDeletionStats(response.stats);
       setMessage({ 
         type: 'success', 
-        text: 'All data has been deleted successfully' 
+        text: 'All user data has been deleted successfully' 
       });
       setConfirmDelete('');
       setSelectedProject(null);
@@ -289,6 +391,114 @@ const AdminData = () => {
     }
   };
 
+  const renderConfigurationSection = (category: string, categoryConfigs: any) => {
+    const categoryLabels: { [key: string]: string } = {
+      learning: 'Learning System',
+      analytics: 'Analytics Collection',
+      features: 'Feature Toggles',
+      performance: 'Performance Settings'
+    };
+
+    return (
+      <Card key={category} sx={{ mb: 3 }}>
+        <CardContent>
+          <Box sx={{ display: 'flex', justifyContent: 'between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6" fontWeight={600}>
+              {categoryLabels[category] || category}
+            </Typography>
+            <Button
+              size="small"
+              onClick={() => resetConfigurations(category)}
+              startIcon={<RestartAlt />}
+              disabled={configLoading}
+            >
+              Reset {categoryLabels[category] || category}
+            </Button>
+          </Box>
+          
+          <Grid container spacing={3}>
+            {Object.entries(categoryConfigs).map(([key, config]: [string, any]) => {
+              const currentValue = configChanges[key] !== undefined ? configChanges[key] : config.value;
+              
+              return (
+                <Grid item xs={12} sm={6} md={4} key={key}>
+                  <Box sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: 'block' }}>
+                      {config.description}
+                    </Typography>
+                    
+                    {typeof config.value === 'boolean' ? (
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={currentValue}
+                            onChange={(e) => handleConfigChange(key, e.target.checked)}
+                            disabled={configLoading}
+                          />
+                        }
+                        label={currentValue ? 'Enabled' : 'Disabled'}
+                      />
+                    ) : typeof config.value === 'number' ? (
+                      <Box>
+                        <TextField
+                          type="number"
+                          value={currentValue}
+                          onChange={(e) => handleConfigChange(key, Number(e.target.value))}
+                          size="small"
+                          fullWidth
+                          disabled={configLoading}
+                          inputProps={{
+                            min: key.includes('confidence') ? 0 : 1,
+                            max: key.includes('confidence') ? 1 : key.includes('interval') ? 60 : 1000,
+                            step: key.includes('confidence') ? 0.1 : 1
+                          }}
+                        />
+                        {key.includes('confidence') && (
+                          <Box sx={{ mt: 1 }}>
+                            <Slider
+                              value={currentValue}
+                              onChange={(_, value) => handleConfigChange(key, value)}
+                              min={0}
+                              max={1}
+                              step={0.1}
+                              disabled={configLoading}
+                              marks
+                              valueLabelDisplay="auto"
+                            />
+                          </Box>
+                        )}
+                      </Box>
+                    ) : (
+                      <TextField
+                        value={currentValue}
+                        onChange={(e) => handleConfigChange(key, e.target.value)}
+                        size="small"
+                        fullWidth
+                        disabled={configLoading}
+                      />
+                    )}
+                    
+                    <Box sx={{ mt: 1, display: 'flex', justifyContent: 'between', alignItems: 'center' }}>
+                      <Typography variant="caption" color="text.secondary">
+                        Updated by {config.updated_by}
+                      </Typography>
+                      {configChanges[key] !== undefined && (
+                        <Chip label="Modified" size="small" color="warning" />
+                      )}
+                    </Box>
+                  </Box>
+                </Grid>
+              );
+            })}
+          </Grid>
+        </CardContent>
+      </Card>
+    );
+  };
+
   const actionDetails = getActionDetails(confirmDelete);
 
   return (
@@ -296,34 +506,90 @@ const AdminData = () => {
       {/* Header */}
       <Box sx={{ mb: 4 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-          <AdminPanelSettings sx={{ fontSize: 32, color: 'error.main' }} />
+          <AdminPanelSettings sx={{ fontSize: 32, color: 'primary.main' }} />
           <Typography variant="h2" component="h1" fontWeight="bold">
-            Administration Panel
+            Administration
           </Typography>
         </Box>
         <Typography variant="body1" color="text.secondary">
-          Manage projects and administer data for your digital developer twin
+          Manage system configuration, projects, and data for your digital developer twin
         </Typography>
       </Box>
 
       {/* Error Message */}
       {message && (
-        <Alert severity={message.type} sx={{ mb: 3 }}>
+        <Alert severity={message.type} sx={{ mb: 3 }} onClose={() => setMessage(null)}>
           {message.text}
         </Alert>
       )}
 
-      {/* Admin Tabs */}
+      {/* Administration Tabs */}
       <Card>
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)}>
+            <Tab icon={<Settings />} label="System Configuration" />
             <Tab icon={<FolderOpen />} label="Project Management" />
             <Tab icon={<Database />} label="Data Administration" />
           </Tabs>
         </Box>
 
-        {/* Tab 1: Project Management */}
+        {/* Tab 1: System Configuration */}
         <TabPanel value={activeTab} index={0}>
+          <Box sx={{ p: 3 }}>
+            <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
+              System Configuration
+            </Typography>
+            
+            <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+              <Button
+                variant="outlined"
+                onClick={() => loadConfigurations()}
+                startIcon={<RefreshCw />}
+                disabled={configLoading}
+              >
+                Refresh
+              </Button>
+              <Button
+                variant="contained"
+                onClick={saveConfigurations}
+                startIcon={<Save />}
+                disabled={configLoading || !hasUnsavedChanges}
+              >
+                Save Changes
+              </Button>
+              <Button
+                variant="outlined"
+                color="warning"
+                onClick={() => resetConfigurations()}
+                startIcon={<RestartAlt />}
+                disabled={configLoading}
+              >
+                Reset All
+              </Button>
+            </Box>
+
+            {configLoading && !Object.keys(configs).length ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <>
+                {Object.entries(configs).map(([category, categoryConfigs]) =>
+                  renderConfigurationSection(category, categoryConfigs)
+                )}
+                
+                {hasUnsavedChanges && (
+                  <Alert severity="warning" sx={{ mt: 2 }}>
+                    You have unsaved configuration changes. Click &quot;Save Changes&quot; to apply them.
+                  </Alert>
+                )}
+              </>
+            )}
+          </Box>
+        </TabPanel>
+
+        {/* Tab 2: Project Management - Keep existing content */}
+        <TabPanel value={activeTab} index={1}>
           <Box sx={{ p: 3 }}>
             {/* Project Management Header */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -407,8 +673,8 @@ const AdminData = () => {
           </Box>
         </TabPanel>
 
-        {/* Tab 2: Data Administration */}
-        <TabPanel value={activeTab} index={1}>
+        {/* Tab 3: Data Administration - Keep existing content */}
+        <TabPanel value={activeTab} index={2}>
           <Box sx={{ p: 3 }}>
             {/* Warning Alert */}
             <Alert severity="warning" sx={{ mb: 4 }}>
@@ -696,38 +962,41 @@ const AdminData = () => {
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
           <Shield sx={{ color: 'primary.main' }} />
           <Typography variant="h6" fontWeight={600}>
-            Data Management Guidelines
+            Administration Guidelines
           </Typography>
         </Box>
         <Grid container spacing={2}>
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12} md={4}>
             <Typography variant="subtitle2" color="primary.main" gutterBottom>
-              Before Deleting Data:
+              System Configuration:
             </Typography>
             <Typography variant="body2" color="text.secondary" component="ul" sx={{ pl: 2 }}>
-              <li>Ensure you have recent backups</li>
-              <li>Consider exporting important data first</li>
-              <li>Verify the correct project is selected</li>
-              <li>Understand the scope of the operation</li>
+              <li>Changes take effect immediately when saved</li>
+              <li>Analytics collection restarts when interval changes</li>
+              <li>Learning system can be toggled on/off safely</li>
+              <li>Performance settings require restart for full effect</li>
             </Typography>
           </Grid>
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12} md={4}>
             <Typography variant="subtitle2" color="secondary.main" gutterBottom>
-              What Gets Preserved:
+              Data Management:
             </Typography>
             <Typography variant="body2" color="text.secondary" component="ul" sx={{ pl: 2 }}>
-              <li>System configuration (embedding models)</li>
-              <li>MCP server functionality</li>
-              <li>Database schema and structure</li>
-              <li>Essential reference data</li>
+              <li>System configuration is always preserved</li>
+              <li>MCP server functionality remains intact</li>
+              <li>Database schema and structure maintained</li>
+              <li>Essential reference data protected</li>
             </Typography>
-            <Typography variant="subtitle2" color="info.main" gutterBottom sx={{ mt: 2 }}>
-              Recovery Options:
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Typography variant="subtitle2" color="info.main" gutterBottom>
+              Best Practices:
             </Typography>
             <Typography variant="body2" color="text.secondary" component="ul" sx={{ pl: 2 }}>
-              <li>Database backups (if available)</li>
-              <li>Export files from previous sessions</li>
-              <li>Project-specific backups</li>
+              <li>Review configuration changes before saving</li>
+              <li>Test with non-critical data first</li>
+              <li>Monitor system performance after changes</li>
+              <li>Keep backups before major operations</li>
             </Typography>
           </Grid>
         </Grid>
@@ -736,4 +1005,4 @@ const AdminData = () => {
   );
 }
 
-export default AdminData;
+export default Administration;

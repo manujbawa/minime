@@ -1,4 +1,5 @@
 // API Response Types
+import { ReactNode } from 'react';
 export interface HealthStatus {
   status: 'healthy' | 'degraded' | 'error';
   version: string;
@@ -119,6 +120,7 @@ export interface Thought {
   content: string;
   thought_type?: 'analysis' | 'hypothesis' | 'decision' | 'action' | 'reflection';
   confidence?: number;
+  confidence_level?: number;
   next_thought_needed: boolean;
   is_revision: boolean;
   revises_thought_id?: number;
@@ -136,11 +138,28 @@ export interface EmbeddingModel {
   status: string;
 }
 
+export interface MemoryDistributionItem {
+  name: string;
+  value: number;
+  percentage?: number;
+  avgImportance?: number;
+  recentActivity?: number;
+}
+
 export interface Analytics {
   database: DatabaseStats;
   thinking: ThinkingStats;
   timeframe: string;
   project: string;
+  memoryDistribution?: MemoryDistributionItem[];
+  projectBreakdown?: any[];
+  timeSeries?: any[];
+  healthMetrics?: any;
+  insights?: any;
+  patterns?: any;
+  summary?: {
+    totalMemories?: number;
+  };
 }
 
 // UI State Types
@@ -254,8 +273,9 @@ export interface TimelineActivity {
   type: 'memory' | 'progress' | 'task' | 'thinking' | 'brief';
   title: string;
   description: string;
+  fullContent?: string;
   metadata?: Record<string, any>;
-  icon?: React.ReactNode;
+  icon?: ReactNode;
   color?: 'primary' | 'secondary' | 'success' | 'error' | 'warning' | 'info';
   category?: string;
   status?: string;

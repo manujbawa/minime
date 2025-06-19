@@ -38,7 +38,7 @@ import {
 import { miniMeAPI } from '../services/api';
 import type { Project, Memory, SearchResult, SearchFilters } from '../types';
 
-export function Search() {
+const Search = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult | null>(null);
@@ -470,3 +470,5 @@ export function Search() {
     </Box>
   );
 }
+
+export default Search;

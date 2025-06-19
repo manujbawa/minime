@@ -70,6 +70,34 @@ import type { Project, Analytics as AnalyticsType } from '../types';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#EC4899', '#6366F1'];
 
+// Memory type icon mapping
+const getMemoryTypeIcon = (memoryType: string) => {
+  const type = memoryType.toLowerCase();
+  switch (type) {
+    case 'task':
+      return <Assessment />;
+    case 'code':
+      return <Code />;
+    case 'bug':
+    case 'bugfix':
+      return <BugReport />;
+    case 'decision':
+    case 'architecture':
+      return <Business />;
+    case 'insight':
+    case 'lessons_learned':
+      return <Lightbulb />;
+    case 'progress':
+    case 'implementation_notes':
+      return <TrendingUp />;
+    case 'requirements':
+    case 'project_brief':
+      return <Assessment />;
+    default:
+      return <Assessment />;
+  }
+};
+
 // Empty state component for charts
 function ChartEmptyState({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) {
   return (
@@ -116,7 +144,7 @@ function TabPanel(props: TabPanelProps) {
   );
 }
 
-export function Analytics() {
+const Analytics = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('all');
   const [timeframe, setTimeframe] = useState<string>('30 days');
@@ -162,8 +190,8 @@ export function Analytics() {
     if (!analytics) return {};
 
     const totalMemories = parseInt(analytics.database.memories.total_memories);
-    const totalSequences = analytics.thinking.total_sequences;
-    const completionRate = analytics.thinking.completion_rate;
+    const totalSequences = analytics.thinking?.total_sequences || 0;
+    const completionRate = analytics.thinking?.completion_rate || 0;
     const avgConfidence = analytics.thinking.avg_confidence || 0.7;
 
     return {
@@ -177,7 +205,7 @@ export function Analytics() {
   const generateTimeSeriesData = () => {
     if (!analytics) return [];
     const totalMemories = parseInt(analytics.database.memories.total_memories);
-    const totalSequences = analytics.thinking.total_sequences;
+    const totalSequences = analytics.thinking?.total_sequences || 0;
     
     // Return empty array if no data - don't generate fake time series
     if (totalMemories === 0 && totalSequences === 0) {
@@ -196,19 +224,70 @@ export function Analytics() {
   };
 
   const generateMemoryTypeDistribution = () => {
-    if (!analytics) return [];
-    const totalMemories = parseInt(analytics.database.memories.total_memories);
-    
-    // Return empty array if no memories
-    if (totalMemories === 0) {
+    try {
+      // Comprehensive validation
+      if (!analytics) {
+        console.log('[Analytics] No analytics data available');
+        return [];
+      }
+      
+      if (!analytics.memoryDistribution) {
+        console.log('[Analytics] No memoryDistribution in analytics data');
+        return [];
+      }
+      
+      if (!Array.isArray(analytics.memoryDistribution)) {
+        console.log('[Analytics] memoryDistribution is not an array:', typeof analytics.memoryDistribution);
+        return [];
+      }
+      
+      console.log('[Analytics] Processing', analytics.memoryDistribution.length, 'memory distribution entries');
+      
+      // Use the actual memory distribution from the enhanced API with comprehensive validation
+      const validEntries = analytics.memoryDistribution.filter((item, index) => {
+        if (!item) {
+          console.warn(`[Analytics] Entry ${index} is null/undefined`);
+          return false;
+        }
+        if (typeof item !== 'object') {
+          console.warn(`[Analytics] Entry ${index} is not an object:`, typeof item);
+          return false;
+        }
+        if (!item.name || typeof item.name !== 'string') {
+          console.warn(`[Analytics] Entry ${index} has invalid name:`, item.name, typeof item.name);
+          return false;
+        }
+        if (item.value === undefined || item.value === null || typeof item.value !== 'number') {
+          console.warn(`[Analytics] Entry ${index} has invalid value:`, item.value, typeof item.value);
+          return false;
+        }
+        return true;
+      });
+      
+      console.log('[Analytics] Valid entries:', validEntries.length, 'out of', analytics.memoryDistribution.length);
+      
+      const processedEntries = validEntries.map((item, index) => {
+        try {
+          const result = {
+            name: String(item.name).charAt(0).toUpperCase() + String(item.name).slice(1),
+            value: Number(item.value),
+            percentage: item.percentage || (analytics?.summary?.totalMemories ? Math.round((Number(item.value) / Number(analytics.summary.totalMemories)) * 100) : 0),
+            color: COLORS[index % COLORS.length],
+            icon: getMemoryTypeIcon(String(item.name)),
+          };
+          console.log(`[Analytics] Created entry ${index}:`, result.name, result.value);
+          return result;
+        } catch (error) {
+          console.error(`[Analytics] Error processing entry ${index}:`, error, item);
+          return null;
+        }
+      }).filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+      
+      return processedEntries;
+    } catch (error) {
+      console.error('[Analytics] Error in generateMemoryTypeDistribution:', error);
       return [];
     }
-    
-    // TODO: Get actual memory type breakdown from backend
-    // For now, just show total count without fake distribution
-    return [
-      { name: 'All Memories', value: totalMemories, icon: <Assessment />, color: COLORS[0] },
-    ];
   };
 
   const generateThinkingAnalytics = () => {
@@ -241,7 +320,7 @@ export function Analytics() {
       },
       { 
         subject: 'Sequence Length', 
-        current: Math.min(100, (analytics.thinking.total_thoughts || 0) / Math.max(1, analytics.thinking.total_sequences || 1) * 10),
+        current: Math.min(100, (analytics.thinking?.total_thoughts || 0) / Math.max(1, analytics.thinking?.total_sequences || 1) * 10),
         target: 80,
         fullMark: 100 
       },
@@ -309,7 +388,7 @@ export function Analytics() {
           </Typography>
         </Box>
         <Typography variant="body1" color="text.secondary">
-          Comprehensive insights into your digital twin's performance, learning patterns, and knowledge evolution
+          Comprehensive insights into your digital twin&apos;s performance, learning patterns, and knowledge evolution
         </Typography>
       </Box>
 
@@ -583,7 +662,11 @@ export function Analytics() {
                             cx="50%"
                             cy="50%"
                             labelLine={false}
-                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                            label={(entry) => {
+                              const name = entry?.name || entry?.payload?.name || 'Unknown';
+                              const percent = entry?.percent || 0;
+                              return `${name} ${(percent * 100).toFixed(0)}%`;
+                            }}
                             outerRadius={80}
                             fill="#8884d8"
                             dataKey="value"
@@ -862,3 +945,5 @@ export function Analytics() {
     </Box>
   );
 }
+
+export default Analytics;

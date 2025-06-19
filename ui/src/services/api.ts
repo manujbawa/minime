@@ -213,6 +213,36 @@ export class MiniMeAPI {
     return response.data;
   }
 
+  // Time-series analytics
+  async getTimeSeriesAnalytics(
+    metric: string,
+    projectName?: string,
+    timeRange = '24 hours',
+    granularity = 'minute'
+  ): Promise<{ success: boolean; metric: string; project: string; timeRange: string; granularity: string; data: Array<{ time: string; value: any }> }> {
+    const params = new URLSearchParams();
+    params.append('metric', metric);
+    params.append('timeRange', timeRange);
+    params.append('granularity', granularity);
+    if (projectName) params.append('project_name', projectName);
+
+    const response = await api.get(`/api/analytics/timeseries?${params}`);
+    return response.data;
+  }
+
+  // Dashboard analytics (multiple metrics combined)
+  async getDashboardAnalytics(
+    projectName?: string,
+    timeRange = '24 hours'
+  ): Promise<{ success: boolean; project: string; timeRange: string; dashboard: any }> {
+    const params = new URLSearchParams();
+    params.append('timeRange', timeRange);
+    if (projectName) params.append('project_name', projectName);
+
+    const response = await api.get(`/api/analytics/dashboard?${params}`);
+    return response.data;
+  }
+
   // Data Administration
   async deleteProjectData(projectName: string, dataType: 'memories'): Promise<{ stats: Record<string, number> }> {
     const response = await api.delete(`/api/projects/${encodeURIComponent(projectName)}/${dataType}`);
@@ -315,28 +345,17 @@ export class MiniMeAPI {
 
   // Project Briefs
   async getProjectBriefs(projectName: string): Promise<{ briefs: ProjectBrief[] }> {
-    // This would call the MCP tool through the server
-    const response = await api.post('/mcp', {
-      method: 'tools/call',
-      params: {
-        name: 'search_memories',
-        arguments: {
-          query: projectName,
-          memory_type: 'project_brief',
-          limit: 10
-        }
-      }
-    });
+    // Use direct API endpoint for more reliable project brief fetching
+    const response = await api.get(`/api/projects/${encodeURIComponent(projectName)}/memories?memory_type=project_brief`);
     
-    // Transform MCP response to ProjectBrief format
-    const memories = response.data.result?.content?.[0]?.text ? 
-      JSON.parse(response.data.result.content[0].text).memories || [] : [];
+    // Transform memories to ProjectBrief format
+    const memories = response.data.memories || [];
     
     const briefs = memories.map((memory: any) => ({
       id: memory.id,
       project_name: projectName,
       content: memory.content,
-      sections: memory.metadata?.sections || [],
+      sections: memory.tags?.filter((tag: string) => !['project_brief'].includes(tag)) || [],
       auto_tasks_created: memory.metadata?.auto_tasks_created || false,
       technical_analysis_included: memory.metadata?.technical_analysis_included || false,
       created_at: memory.created_at,
@@ -463,53 +482,32 @@ export class MiniMeAPI {
 
   // Task Management
   async getProjectTasks(projectName: string): Promise<{ tasks: TaskItem[] }> {
-    const response = await api.post('/mcp', {
-      method: 'tools/call',
-      params: {
-        name: 'get_next_task',
-        arguments: {
-          project_name: projectName,
-          include_context: true
-        }
-      }
-    });
-
-    // For now, return mock tasks since we'd need to implement a get_all_tasks endpoint
+    const response = await api.get(`/api/projects/${encodeURIComponent(projectName)}/tasks`);
+    
+    if (!response.data.success) {
+      throw new Error(response.data.error || 'Failed to fetch tasks');
+    }
+    
+    // Transform database tasks to match UI TaskItem interface
+    const transformedTasks: TaskItem[] = response.data.tasks.map((task: any) => ({
+      id: task.id.toString(),
+      title: task.title,
+      description: task.description || '',
+      category: task.type, // Database uses 'type', UI uses 'category'
+      status: task.status,
+      priority: {
+        urgency: task.priority,
+        impact: task.priority, // Using same priority for all fields for now
+        effort: task.priority
+      },
+      estimated_hours: task.metadata?.estimated_hours || 8,
+      tags: task.metadata?.tags || [],
+      created_at: task.created_at,
+      updated_at: task.updated_at
+    }));
+    
     return {
-      tasks: [
-        {
-          id: '1',
-          title: 'Implement user authentication',
-          description: 'Add OAuth2 authentication with JWT tokens',
-          category: 'feature',
-          status: 'in_progress',
-          priority: {
-            urgency: 'high',
-            impact: 'high',
-            effort: 'medium'
-          },
-          estimated_hours: 16,
-          tags: ['auth', 'security'],
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        },
-        {
-          id: '2',
-          title: 'Add input validation',
-          description: 'Validate all API inputs to prevent injection attacks',
-          category: 'bug',
-          status: 'pending',
-          priority: {
-            urgency: 'medium',
-            impact: 'high',
-            effort: 'low'
-          },
-          estimated_hours: 8,
-          tags: ['security', 'api'],
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
-      ]
+      tasks: transformedTasks
     };
   }
 

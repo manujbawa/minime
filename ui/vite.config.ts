@@ -9,14 +9,11 @@ export default defineConfig({
     assetsDir: 'assets',
     sourcemap: false,
     assetsInlineLimit: 0, // Force all assets to be separate files
+    chunkSizeWarningLimit: 600, // Increase limit slightly for unavoidable large chunks
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          charts: ['recharts'],
-          flow: ['@xyflow/react'],
-          utils: ['axios', 'date-fns']
-        },
+        // Removed manual chunking to eliminate cascading lexical declaration errors
+        // Let Vite handle bundling naturally for proper dependency order management
         assetFileNames: (assetInfo) => {
           const info = assetInfo.name?.split('.') || [];
           const extType = info[info.length - 1];

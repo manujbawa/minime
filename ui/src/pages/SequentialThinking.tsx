@@ -37,32 +37,139 @@ import {
   AccountTree,
   Timeline,
 } from '@mui/icons-material';
-import {
-  ReactFlow,
-  Node,
-  Edge,
-  Controls,
-  Background,
-  useNodesState,
-  useEdgesState,
-  Position,
-  MarkerType,
-} from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
+// Removed ReactFlow due to persistent compatibility issues
+// Using custom SVG-based flow diagram instead
 import { miniMeAPI } from '../services/api';
 import type { Project, ThinkingSequence, Thought } from '../types';
 
-// Custom node types for different thought types
+// Custom SVG node types for different thought types
 const thoughtTypeConfig = {
-  analysis: { color: '#2196F3', icon: '🔍', label: 'Analysis' },
-  hypothesis: { color: '#FF9800', icon: '💡', label: 'Hypothesis' },
-  decision: { color: '#4CAF50', icon: '⚖️', label: 'Decision' },
-  action: { color: '#F44336', icon: '⚡', label: 'Action' },
-  reflection: { color: '#9C27B0', icon: '🤔', label: 'Reflection' },
+  reasoning: { color: '#2196F3', icon: '🔍', label: 'Reasoning' },
+  conclusion: { color: '#4CAF50', icon: '⚖️', label: 'Conclusion' },
+  question: { color: '#FF9800', icon: '❓', label: 'Question' },
+  hypothesis: { color: '#9C27B0', icon: '💡', label: 'Hypothesis' },
+  observation: { color: '#F44336', icon: '👁️', label: 'Observation' },
+  assumption: { color: '#795548', icon: '🤔', label: 'Assumption' },
   default: { color: '#757575', icon: '💭', label: 'Thought' }
 };
 
-export function SequentialThinking() {
+// Simple SVG flow diagram component
+interface FlowDiagramProps {
+  thoughts: Thought[];
+  width?: number;
+  height?: number;
+}
+
+const FlowDiagram: React.FC<FlowDiagramProps> = ({ thoughts, width = 800, height = 600 }) => {
+  if (!thoughts || thoughts.length === 0) {
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height, border: '1px solid #e0e0e0', borderRadius: 2 }}>
+        <Typography color="text.secondary">No thoughts to visualize</Typography>
+      </Box>
+    );
+  }
+
+  const sortedThoughts = [...thoughts].sort((a, b) => a.thought_number - b.thought_number);
+  const nodeWidth = 200;
+  const nodeHeight = 80;
+  const horizontalSpacing = 250;
+  const verticalSpacing = 120;
+  const nodesPerRow = 3;
+
+  return (
+    <Box sx={{ width: '100%', height, overflow: 'auto', border: '1px solid #e0e0e0', borderRadius: 2 }}>
+      <svg width={Math.max(width, nodesPerRow * horizontalSpacing)} height={Math.max(height, Math.ceil(sortedThoughts.length / nodesPerRow) * verticalSpacing + 100)}>
+        {/* Draw connections first (behind nodes) */}
+        {sortedThoughts.map((thought, index) => {
+          if (index === 0) return null;
+          
+          const currentRow = Math.floor(index / nodesPerRow);
+          const currentCol = index % nodesPerRow;
+          const currentX = currentCol * horizontalSpacing + nodeWidth / 2 + 50;
+          const currentY = currentRow * verticalSpacing + nodeHeight / 2 + 50;
+          
+          const prevRow = Math.floor((index - 1) / nodesPerRow);
+          const prevCol = (index - 1) % nodesPerRow;
+          const prevX = prevCol * horizontalSpacing + nodeWidth / 2 + 50;
+          const prevY = prevRow * verticalSpacing + nodeHeight / 2 + 50;
+          
+          return (
+            <g key={`edge-${thought.id}`}>
+              <line
+                x1={prevX}
+                y1={prevY}
+                x2={currentX}
+                y2={currentY}
+                stroke="#666"
+                strokeWidth="2"
+                markerEnd="url(#arrowhead)"
+              />
+            </g>
+          );
+        })}
+        
+        {/* Arrow marker definition */}
+        <defs>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#666" />
+          </marker>
+        </defs>
+        
+        {/* Draw nodes */}
+        {sortedThoughts.map((thought, index) => {
+          const row = Math.floor(index / nodesPerRow);
+          const col = index % nodesPerRow;
+          const x = col * horizontalSpacing + 50;
+          const y = row * verticalSpacing + 50;
+                     const thoughtConfig = thoughtTypeConfig[thought.thought_type as keyof typeof thoughtTypeConfig] || thoughtTypeConfig.default;
+          
+          return (
+            <g key={thought.id}>
+              {/* Node background */}
+              <rect
+                x={x}
+                y={y}
+                width={nodeWidth}
+                height={nodeHeight}
+                rx="8"
+                fill={thoughtConfig.color}
+                stroke="#fff"
+                strokeWidth="2"
+              />
+              
+              {/* Node text */}
+              <foreignObject x={x + 10} y={y + 10} width={nodeWidth - 20} height={nodeHeight - 20}>
+                <Box sx={{ color: 'white', fontSize: '12px', fontWeight: 600, overflow: 'hidden' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+                    <span style={{ marginRight: '4px' }}>{thoughtConfig.icon}</span>
+                    <span>#{thought.thought_number}</span>
+                  </Box>
+                  <Box sx={{ fontSize: '10px', opacity: 0.9, lineHeight: 1.2 }}>
+                    {thought.content.substring(0, 80)}...
+                  </Box>
+                </Box>
+              </foreignObject>
+              
+              {/* Confidence indicator */}
+              {thought.confidence_level && (
+                <circle
+                  cx={x + nodeWidth - 15}
+                  cy={y + 15}
+                  r="8"
+                  fill={thought.confidence_level > 0.7 ? '#4CAF50' : thought.confidence_level > 0.4 ? '#FF9800' : '#F44336'}
+                  stroke="#fff"
+                  strokeWidth="1"
+                />
+              )}
+            </g>
+          );
+        })}
+      </svg>
+    </Box>
+  );
+};
+
+const SequentialThinking = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [sequences, setSequences] = useState<ThinkingSequence[]>([]);
@@ -71,8 +178,6 @@ export function SequentialThinking() {
   const [error, setError] = useState<string | null>(null);
   const [selectedSequence, setSelectedSequence] = useState<ThinkingSequence | null>(null);
   const [sequenceDetails, setSequenceDetails] = useState<ThinkingSequence | null>(null);
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [detailsLoading, setDetailsLoading] = useState(false);
 
   useEffect(() => {
@@ -119,206 +224,38 @@ export function SequentialThinking() {
   const loadSequenceDetails = async (sequence: ThinkingSequence) => {
     try {
       setDetailsLoading(true);
-      // In a real implementation, you'd fetch detailed thoughts here
-      // For now, we'll use the sequence data we have
-      setSequenceDetails(sequence);
-      generateFlowDiagram(sequence);
+      console.log('Loading sequence details for:', sequence.id, sequence.sequence_name);
+      
+      // Fetch detailed sequence data with thoughts
+      const response = await miniMeAPI.getThinkingSequence(sequence.id, {
+        format: 'detailed',
+        branches: true
+      });
+      
+      console.log('API response:', response);
+      console.log('Sequence thoughts:', response.sequence.thoughts);
+      
+      setSequenceDetails(response.sequence);
+      generateFlowDiagram(response.sequence);
     } catch (error) {
       console.error('Error loading sequence details:', error);
+      console.log('Falling back to original sequence data:', sequence);
+      // Fallback to the sequence data we have
+      setSequenceDetails(sequence);
+      generateFlowDiagram(sequence);
     } finally {
       setDetailsLoading(false);
     }
   };
 
+  // Simplified flow diagram approach - no more ReactFlow dependencies
   const generateFlowDiagram = (sequence: ThinkingSequence) => {
-    if (!sequence.thoughts || sequence.thoughts.length === 0) {
-      // Generate sample flow for demonstration
-      const sampleNodes = generateSampleFlow(sequence);
-      setNodes(sampleNodes.nodes);
-      setEdges(sampleNodes.edges);
-      return;
-    }
-
-    const newNodes: Node[] = [];
-    const newEdges: Edge[] = [];
-    const nodePositions = new Map<number, { x: number; y: number }>();
-
-    // Sort thoughts by thought_number
-    const sortedThoughts = [...sequence.thoughts].sort((a, b) => a.thought_number - b.thought_number);
-
-    // Calculate positions
-    sortedThoughts.forEach((thought, index) => {
-      const row = Math.floor(index / 3);
-      const col = index % 3;
-      const x = col * 250;
-      const y = row * 150;
-      nodePositions.set(thought.id, { x, y });
-
-      const thoughtConfig = thoughtTypeConfig[thought.thought_type || 'default'];
-      
-      newNodes.push({
-        id: thought.id.toString(),
-        type: 'default',
-        position: { x, y },
-        data: {
-          label: (
-            <Box sx={{ p: 1, textAlign: 'center', minWidth: 200 }}>
-              <Typography variant="caption" sx={{ display: 'block', mb: 0.5 }}>
-                {thoughtConfig.icon} {thoughtConfig.label}
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                #{thought.thought_number}
-              </Typography>
-              <Typography variant="caption" sx={{ display: 'block', wordBreak: 'break-word' }}>
-                {thought.content.length > 60 ? `${thought.content.substring(0, 60)}...` : thought.content}
-              </Typography>
-              {thought.confidence && (
-                <LinearProgress
-                  variant="determinate"
-                  value={thought.confidence * 100}
-                  sx={{ mt: 1, height: 4, borderRadius: 2 }}
-                />
-              )}
-            </Box>
-          )
-        },
-        style: {
-          background: thoughtConfig.color,
-          color: 'white',
-          border: '2px solid #fff',
-          borderRadius: '8px',
-          width: 220,
-        }
-      });
-
-      // Add edges for sequential flow
-      if (index > 0 && !thought.branch_from_thought_id && !thought.is_revision) {
-        const prevThought = sortedThoughts[index - 1];
-        newEdges.push({
-          id: `e${prevThought.id}-${thought.id}`,
-          source: prevThought.id.toString(),
-          target: thought.id.toString(),
-          type: 'smoothstep',
-          markerEnd: { type: MarkerType.ArrowClosed },
-          style: { stroke: '#666' }
-        });
-      }
-
-      // Add edges for branching
-      if (thought.branch_from_thought_id) {
-        newEdges.push({
-          id: `branch-${thought.branch_from_thought_id}-${thought.id}`,
-          source: thought.branch_from_thought_id.toString(),
-          target: thought.id.toString(),
-          type: 'smoothstep',
-          markerEnd: { type: MarkerType.ArrowClosed },
-          style: { stroke: '#FF9800', strokeWidth: 2 },
-          label: 'Branch'
-        });
-      }
-
-      // Add edges for revisions
-      if (thought.revises_thought_id) {
-        newEdges.push({
-          id: `revision-${thought.revises_thought_id}-${thought.id}`,
-          source: thought.revises_thought_id.toString(),
-          target: thought.id.toString(),
-          type: 'smoothstep',
-          markerEnd: { type: MarkerType.ArrowClosed },
-          style: { stroke: '#9C27B0', strokeWidth: 2, strokeDasharray: '5,5' },
-          label: 'Revision'
-        });
-      }
-    });
-
-    setNodes(newNodes);
-    setEdges(newEdges);
+    console.log('Generating flow diagram for sequence:', sequence);
+    console.log('Sequence has thoughts:', sequence.thoughts ? sequence.thoughts.length : 0);
+    // Flow diagram will be handled by the FlowDiagram component directly
   };
 
-  const generateSampleFlow = (sequence: ThinkingSequence) => {
-    // Generate a sample flow diagram for demonstration
-    const nodes: Node[] = [
-      {
-        id: '1',
-        position: { x: 0, y: 0 },
-        data: {
-          label: (
-            <Box sx={{ p: 1, textAlign: 'center' }}>
-              <Typography variant="caption">🔍 Analysis</Typography>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>Problem Identification</Typography>
-              <Typography variant="caption">Understanding the core issue</Typography>
-            </Box>
-          )
-        },
-        style: { background: '#2196F3', color: 'white', borderRadius: '8px', width: 200 }
-      },
-      {
-        id: '2',
-        position: { x: 250, y: 0 },
-        data: {
-          label: (
-            <Box sx={{ p: 1, textAlign: 'center' }}>
-              <Typography variant="caption">💡 Hypothesis</Typography>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>Initial Theory</Typography>
-              <Typography variant="caption">Forming preliminary solution</Typography>
-            </Box>
-          )
-        },
-        style: { background: '#FF9800', color: 'white', borderRadius: '8px', width: 200 }
-      },
-      {
-        id: '3',
-        position: { x: 500, y: 0 },
-        data: {
-          label: (
-            <Box sx={{ p: 1, textAlign: 'center' }}>
-              <Typography variant="caption">⚖️ Decision</Typography>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>Path Selection</Typography>
-              <Typography variant="caption">Choosing best approach</Typography>
-            </Box>
-          )
-        },
-        style: { background: '#4CAF50', color: 'white', borderRadius: '8px', width: 200 }
-      },
-      {
-        id: '4',
-        position: { x: 250, y: 150 },
-        data: {
-          label: (
-            <Box sx={{ p: 1, textAlign: 'center' }}>
-              <Typography variant="caption">⚡ Action</Typography>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>Implementation</Typography>
-              <Typography variant="caption">Executing the plan</Typography>
-            </Box>
-          )
-        },
-        style: { background: '#F44336', color: 'white', borderRadius: '8px', width: 200 }
-      },
-      {
-        id: '5',
-        position: { x: 500, y: 150 },
-        data: {
-          label: (
-            <Box sx={{ p: 1, textAlign: 'center' }}>
-              <Typography variant="caption">🤔 Reflection</Typography>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>Outcome Analysis</Typography>
-              <Typography variant="caption">Evaluating results</Typography>
-            </Box>
-          )
-        },
-        style: { background: '#9C27B0', color: 'white', borderRadius: '8px', width: 200 }
-      }
-    ];
-
-    const edges: Edge[] = [
-      { id: 'e1-2', source: '1', target: '2', markerEnd: { type: MarkerType.ArrowClosed } },
-      { id: 'e2-3', source: '2', target: '3', markerEnd: { type: MarkerType.ArrowClosed } },
-      { id: 'e3-4', source: '3', target: '4', markerEnd: { type: MarkerType.ArrowClosed } },
-      { id: 'e4-5', source: '4', target: '5', markerEnd: { type: MarkerType.ArrowClosed } }
-    ];
-
-    return { nodes, edges };
-  };
+// Removed generateSampleFlow - using FlowDiagram component directly
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -581,7 +518,7 @@ export function SequentialThinking() {
           </Typography>
           <Paper sx={{ p: 3, bgcolor: 'primary.50', border: '1px solid', borderColor: 'primary.200', maxWidth: 400, mx: 'auto' }}>
             <Typography variant="body2" color="primary.dark">
-              <strong>Tip:</strong> Use the "start_thinking_sequence" MCP tool in your IDE to begin structured reasoning
+              <strong>Tip:</strong> Use the &quot;start_thinking_sequence&quot; MCP tool in your IDE to begin structured reasoning
             </Typography>
           </Paper>
         </Paper>
@@ -629,17 +566,11 @@ export function SequentialThinking() {
                 )}
               </Box>
               <Box sx={{ flexGrow: 1, position: 'relative' }}>
-                <ReactFlow
-                  nodes={nodes}
-                  edges={edges}
-                  onNodesChange={onNodesChange}
-                  onEdgesChange={onEdgesChange}
-                  fitView
-                  fitViewOptions={{ padding: 0.2 }}
-                >
-                  <Controls />
-                  <Background />
-                </ReactFlow>
+                <FlowDiagram 
+                  thoughts={sequenceDetails?.thoughts || []} 
+                  width={800} 
+                  height={500} 
+                />
               </Box>
             </Box>
           )}
@@ -653,3 +584,5 @@ export function SequentialThinking() {
     </Box>
   );
 }
+
+export default SequentialThinking;

@@ -93,13 +93,65 @@ interface LearningStatus {
   last_processing: string;
   processing_rate: number;
   system_health: string;
+  detailed?: DetailedLearningStatus;
 }
 
-export function MetaLearning() {
+interface DetailedLearningStatus {
+  status: string;
+  realTimeEnabled: boolean;
+  scheduledEnabled: boolean;
+  memoryBufferSize: number;
+  queue: Array<{ status: string; count: number }>;
+  patterns: {
+    total_patterns: number;
+    avg_confidence: number;
+    unique_projects: number;
+  };
+  insights: Array<{ insight_type: string; count: number }>;
+  lastProcessed: Record<string, string>;
+  scheduling: Record<string, {
+    lastRun: string;
+    nextScheduled: string;
+    intervalMs: number;
+    intervalHuman: string;
+    pendingTasks: number;
+    isOverdue: boolean;
+    timeUntilNext?: number;
+    timeUntilNextHuman?: string;
+  }>;
+  memoryCoverage: {
+    totalMemories: number;
+    memoriesWithPatterns: number;
+    memoriesProcessed: number;
+    recentMemories: number;
+    patternCoveragePercent: number;
+    processingCoveragePercent: number;
+    memoryTypeBreakdown: Array<{ memory_type: string; count: number }>;
+    unprocessedMemories: number;
+  };
+  processingProgress: {
+    queueMetrics: Record<string, { count: number; avgDurationSeconds: number }>;
+    taskPerformance: Array<{
+      taskType: string;
+      totalTasks: number;
+      completedTasks: number;
+      failedTasks: number;
+      successRate: number;
+      avgDurationMs: number;
+    }>;
+    recentActivity: number;
+    errorRate: number;
+    systemHealth: string;
+  };
+  currentTime?: string;
+}
+
+function MetaLearning() {
   const [tabValue, setTabValue] = useState(0);
   const [insights, setInsights] = useState<LearningInsight[]>([]);
   const [patterns, setPatterns] = useState<CodingPattern[]>([]);
   const [status, setStatus] = useState<LearningStatus | null>(null);
+  const [monitoringData, setMonitoringData] = useState<DetailedLearningStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -108,31 +160,82 @@ export function MetaLearning() {
       setLoading(true);
       setError(null);
       
-      // TODO: Implement actual API endpoints for meta-learning data
-      // For now, we'll use empty arrays to show the system is ready but has no data yet
+      // Fetch comprehensive monitoring data
+      const monitoringResponse = await fetch('/api/learning/monitoring');
+      if (monitoringResponse.ok) {
+        const monitoring = await monitoringResponse.json();
+        
+        // Ensure all required fields have defaults
+        const normalizedMonitoring = {
+          ...monitoring,
+          memoryCoverage: {
+            totalMemories: 0,
+            memoriesWithPatterns: 0,
+            memoriesProcessed: 0,
+            recentMemories: 0,
+            patternCoveragePercent: 0,
+            processingCoveragePercent: 0,
+            memoryTypeBreakdown: [],
+            unprocessedMemories: 0,
+            ...monitoring.memoryCoverage
+          },
+          processingProgress: {
+            queueMetrics: {},
+            taskPerformance: [],
+            recentActivity: 0,
+            errorRate: 0,
+            systemHealth: 'healthy',
+            ...monitoring.processingProgress
+          },
+          queue: monitoring.queue || [],
+          scheduling: monitoring.scheduling || {},
+          patterns: monitoring.patterns || { total_patterns: 0, avg_confidence: 0, unique_projects: 0 },
+          insights: monitoring.insights || []
+        };
+        
+        setMonitoringData(normalizedMonitoring);
+        
+        // Extract basic status for compatibility
+        const basicStatus: LearningStatus = {
+          queue_size: normalizedMonitoring.queue?.find((q: any) => q.status === 'pending')?.count || 0,
+          total_patterns: normalizedMonitoring.patterns?.total_patterns || 0,
+          total_insights: normalizedMonitoring.insights?.reduce((sum: number, insight: any) => sum + parseInt(insight.count), 0) || 0,
+          last_processing: normalizedMonitoring.scheduling?.learning_queue_processing?.lastRun || new Date().toISOString(),
+          processing_rate: normalizedMonitoring.processingProgress?.errorRate ? 
+            (100 - normalizedMonitoring.processingProgress.errorRate) / 100 : 1.0,
+          system_health: normalizedMonitoring.processingProgress?.systemHealth || 'healthy',
+          detailed: normalizedMonitoring
+        };
+        setStatus(basicStatus);
+      } else {
+        throw new Error(`Failed to fetch monitoring data: ${monitoringResponse.status}`);
+      }
       
-      // In a real implementation, these would call:
-      // const insightsResponse = await miniMeAPI.getLearningInsights();
-      // const patternsResponse = await miniMeAPI.getCodingPatterns();
-      // const statusResponse = await miniMeAPI.getLearningStatus();
+      // Fetch insights and patterns independently for better resilience
+      console.log('Fetching insights and patterns...');
       
-      // Empty data arrays - system is ready but no learning data yet
-      const emptyInsights: LearningInsight[] = [];
-      const emptyPatterns: CodingPattern[] = [];
-      
-      // Basic status showing system is ready
-      const basicStatus: LearningStatus = {
-        queue_size: 0,
-        total_patterns: 0,
-        total_insights: 0,
-        last_processing: new Date().toISOString(),
-        processing_rate: 1.0, // System is healthy, just no data to process yet
-        system_health: 'healthy'
-      };
+      // Fetch insights
+      try {
+        const insightsResponse = await miniMeAPI.getLearningInsights({ limit: 20 });
+        console.log('Insights response:', insightsResponse);
+        setInsights(insightsResponse.insights || []);
+      } catch (insightsError) {
+        console.error('Failed to fetch insights:', insightsError);
+        setInsights([]);
+      }
 
-      setInsights(emptyInsights);
-      setPatterns(emptyPatterns);
-      setStatus(basicStatus);
+      // Fetch patterns independently 
+      try {
+        const patternsResponse = await miniMeAPI.getCodingPatterns({ limit: 20 });
+        console.log('Patterns response:', patternsResponse);
+        console.log('Patterns count:', patternsResponse.patterns?.length || 0);
+        setPatterns(patternsResponse.patterns || []);
+        console.log('Set patterns state:', patternsResponse.patterns || []);
+      } catch (patternsError) {
+        console.error('Failed to fetch patterns:', patternsError);
+        setPatterns([]);
+      }
+      
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch learning data');
     } finally {
@@ -143,6 +246,10 @@ export function MetaLearning() {
   useEffect(() => {
     fetchLearningData();
   }, []);
+
+  useEffect(() => {
+    console.log('Patterns state updated:', patterns.length, patterns);
+  }, [patterns]);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -300,6 +407,14 @@ export function MetaLearning() {
                   Patterns
                 </Box>
               </Badge>
+            } 
+          />
+          <Tab 
+            label={
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Assessment sx={{ mr: 1 }} />
+                Monitoring
+              </Box>
             } 
           />
         </Tabs>
@@ -477,6 +592,305 @@ export function MetaLearning() {
           </Alert>
         )}
       </TabPanel>
+
+      {/* Monitoring Tab */}
+      <TabPanel value={tabValue} index={2}>
+        {monitoringData ? (
+          <Grid container spacing={3}>
+            {/* Scheduling Information */}
+            <Grid item xs={12}>
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Timeline sx={{ mr: 1 }} />
+                    Learning Pipeline Schedule
+                  </Typography>
+                  <Grid container spacing={2}>
+                    {Object.entries(monitoringData.scheduling).map(([taskType, schedule]) => (
+                      <Grid item xs={12} sm={6} md={4} key={taskType}>
+                        <Paper sx={{ p: 2, backgroundColor: schedule.isOverdue ? 'error.light' : 'background.paper' }}>
+                          <Typography variant="subtitle2" gutterBottom>
+                            {taskType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                          </Typography>
+                          <Stack spacing={1}>
+                            <Typography variant="body2">
+                              <strong>Interval:</strong> {schedule.intervalHuman}
+                            </Typography>
+                            <Typography variant="body2">
+                              <strong>Last Run:</strong> {schedule.lastRun ? 
+                                new Date(schedule.lastRun).toLocaleString() : 'Never'}
+                            </Typography>
+                            <Typography variant="body2">
+                              <strong>Next Run:</strong> {schedule.timeUntilNextHuman || 'Calculating...'}
+                              {schedule.isOverdue && (
+                                <Chip label="OVERDUE" size="small" color="error" sx={{ ml: 1 }} />
+                              )}
+                            </Typography>
+                            {schedule.pendingTasks > 0 && (
+                              <Typography variant="body2">
+                                <strong>Pending Tasks:</strong> {schedule.pendingTasks}
+                              </Typography>
+                            )}
+                          </Stack>
+                        </Paper>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Memory Coverage Statistics */}
+            <Grid item xs={12} md={6}>
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Psychology sx={{ mr: 1 }} />
+                    Memory Coverage
+                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={6}>
+                      <Box textAlign="center">
+                        <Typography variant="h4" color="primary.main">
+                          {monitoringData.memoryCoverage.totalMemories}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Total Memories
+                        </Typography>
+                      </Box>
+                    </Grid>
+                    <Grid item xs={6}>
+                      <Box textAlign="center">
+                        <Typography variant="h4" color="success.main">
+                          {monitoringData.memoryCoverage.memoriesWithPatterns}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          With Patterns
+                        </Typography>
+                      </Box>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Typography variant="body2" gutterBottom>
+                        Pattern Coverage: {monitoringData.memoryCoverage.patternCoveragePercent}%
+                      </Typography>
+                      <LinearProgress 
+                        variant="determinate" 
+                        value={monitoringData.memoryCoverage.patternCoveragePercent} 
+                        sx={{ mb: 2 }}
+                      />
+                      <Typography variant="body2" gutterBottom>
+                        Processing Coverage: {monitoringData.memoryCoverage.processingCoveragePercent}%
+                      </Typography>
+                      <LinearProgress 
+                        variant="determinate" 
+                        value={monitoringData.memoryCoverage.processingCoveragePercent} 
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Typography variant="body2" sx={{ mt: 2 }}>
+                        <strong>Recent Activity:</strong> {monitoringData.memoryCoverage.recentMemories} memories in last 24h
+                      </Typography>
+                      <Typography variant="body2">
+                        <strong>Unprocessed:</strong> {monitoringData.memoryCoverage.unprocessedMemories} memories
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Processing Progress */}
+            <Grid item xs={12} md={6}>
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Speed sx={{ mr: 1 }} />
+                    Processing Progress
+                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={6}>
+                      <Box textAlign="center">
+                        <Typography variant="h4" color={
+                          monitoringData.processingProgress.systemHealth === 'healthy' ? 'success.main' :
+                          monitoringData.processingProgress.systemHealth === 'degraded' ? 'warning.main' : 'error.main'
+                        }>
+                          {monitoringData.processingProgress.errorRate}%
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Error Rate
+                        </Typography>
+                      </Box>
+                    </Grid>
+                    <Grid item xs={6}>
+                      <Box textAlign="center">
+                        <Typography variant="h4" color="info.main">
+                          {monitoringData.processingProgress.recentActivity}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Recent Tasks
+                        </Typography>
+                      </Box>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Chip 
+                        label={`System Health: ${monitoringData.processingProgress.systemHealth.toUpperCase()}`}
+                        color={
+                          monitoringData.processingProgress.systemHealth === 'healthy' ? 'success' :
+                          monitoringData.processingProgress.systemHealth === 'degraded' ? 'warning' : 'error'
+                        }
+                        sx={{ mb: 2 }}
+                      />
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Task Performance */}
+            <Grid item xs={12}>
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Assessment sx={{ mr: 1 }} />
+                    Task Performance (Last 7 Days)
+                  </Typography>
+                  <Grid container spacing={2}>
+                    {monitoringData.processingProgress.taskPerformance.map((task) => (
+                      <Grid item xs={12} sm={6} md={3} key={task.taskType}>
+                        <Paper sx={{ p: 2 }}>
+                          <Typography variant="subtitle2" gutterBottom>
+                            {task.taskType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                          </Typography>
+                          <Stack spacing={1}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <Typography variant="body2">Total:</Typography>
+                              <Typography variant="body2">{task.totalTasks}</Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <Typography variant="body2">Success Rate:</Typography>
+                              <Typography variant="body2" color={task.successRate > 90 ? 'success.main' : task.successRate > 70 ? 'warning.main' : 'error.main'}>
+                                {task.successRate}%
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <Typography variant="body2">Avg Duration:</Typography>
+                              <Typography variant="body2">
+                                {task.avgDurationMs > 0 ? `${Math.round(task.avgDurationMs)}ms` : 'N/A'}
+                              </Typography>
+                            </Box>
+                            {task.failedTasks > 0 && (
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <Typography variant="body2">Failed:</Typography>
+                                <Typography variant="body2" color="error.main">{task.failedTasks}</Typography>
+                              </Box>
+                            )}
+                          </Stack>
+                        </Paper>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Queue Status */}
+            <Grid item xs={12} md={6}>
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                    <TrendingUp sx={{ mr: 1 }} />
+                    Processing Queue
+                  </Typography>
+                  <Grid container spacing={2}>
+                    {monitoringData.queue.map((queueItem) => (
+                      <Grid item xs={6} key={queueItem.status}>
+                        <Box textAlign="center">
+                          <Typography variant="h5" color={
+                            queueItem.status === 'completed' ? 'success.main' :
+                            queueItem.status === 'pending' ? 'info.main' :
+                            queueItem.status === 'processing' ? 'warning.main' : 'error.main'
+                          }>
+                            {queueItem.count}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {queueItem.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                          </Typography>
+                        </Box>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Memory Type Breakdown */}
+            <Grid item xs={12} md={6}>
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Code sx={{ mr: 1 }} />
+                    Memory Type Breakdown
+                  </Typography>
+                  <List dense>
+                    {monitoringData.memoryCoverage.memoryTypeBreakdown && monitoringData.memoryCoverage.memoryTypeBreakdown.length > 0 ? (
+                      monitoringData.memoryCoverage.memoryTypeBreakdown.slice(0, 8).map((type) => (
+                        <ListItem key={type.memory_type} sx={{ py: 0.5 }}>
+                          <ListItemText 
+                            primary={type.memory_type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                            secondary={`${type.count} memories`}
+                          />
+                          <Typography variant="body2" color="text.secondary">
+                            {monitoringData.memoryCoverage.totalMemories > 0 ? 
+                              Math.round((type.count / monitoringData.memoryCoverage.totalMemories) * 100) : 0}%
+                          </Typography>
+                        </ListItem>
+                      ))
+                    ) : (
+                      <ListItem>
+                        <ListItemText 
+                          primary="No memory types found"
+                          secondary="Start storing memories to see breakdown"
+                        />
+                      </ListItem>
+                    )}
+                  </List>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* System Status */}
+            <Grid item xs={12}>
+              <Alert 
+                severity={
+                  monitoringData.processingProgress.systemHealth === 'healthy' ? 'success' :
+                  monitoringData.processingProgress.systemHealth === 'degraded' ? 'warning' : 'error'
+                }
+              >
+                <Typography variant="subtitle2">
+                  Meta-Learning System Status: {monitoringData.processingProgress.systemHealth.toUpperCase()}
+                </Typography>
+                <Typography variant="body2">
+                  Last updated: {monitoringData.currentTime ? new Date(monitoringData.currentTime).toLocaleString() : 'Unknown'}
+                </Typography>
+                {monitoringData.processingProgress.systemHealth !== 'healthy' && (
+                  <Typography variant="body2" sx={{ mt: 1 }}>
+                    {monitoringData.processingProgress.systemHealth === 'degraded' ? 
+                      'Some tasks are experiencing delays. Monitor error rates and processing times.' :
+                      'System is experiencing significant issues. Check logs and consider restarting the learning pipeline.'
+                    }
+                  </Typography>
+                )}
+              </Alert>
+            </Grid>
+          </Grid>
+        ) : (
+          <Alert severity="info">
+            Loading monitoring data...
+          </Alert>
+        )}
+      </TabPanel>
     </Box>
   );
 }
+
+export default MetaLearning;

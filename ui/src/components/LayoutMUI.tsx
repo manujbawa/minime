@@ -39,7 +39,7 @@ const navigation = [
   { name: 'Search', href: '/search', icon: Search },
   { name: 'MCP Tools', href: '/mcp-tools', icon: Build },
   { name: 'Meta-Learning', href: '/meta-learning', icon: School },
-  { name: 'Administer Data', href: '/admin', icon: AdminPanelSettings },
+  { name: 'Administer MCP Config', href: '/admin', icon: AdminPanelSettings },
 ];
 
 const drawerWidth = 280;

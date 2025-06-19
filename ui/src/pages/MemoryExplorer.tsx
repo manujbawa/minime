@@ -35,7 +35,7 @@ import type { Memory, Project, SearchFilters } from '../types';
 import { format } from 'date-fns';
 import { getMemoryTypesForUI, getMemoryTypeColor as getTypeColor, getMemoryTypesByCategories } from '../utils/memoryTypes';
 
-export function MemoryExplorer() {
+const MemoryExplorer = () => {
   const [memories, setMemories] = useState<Memory[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -338,3 +338,5 @@ export function MemoryExplorer() {
     </Box>
   );
 }
+
+export default MemoryExplorer;

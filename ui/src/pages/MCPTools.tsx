@@ -56,7 +56,7 @@ interface MCPStatus {
   services: Record<string, string>;
 }
 
-export function MCPTools() {
+const MCPTools = () => {
   const [mcpStatus, setMCPStatus] = useState<MCPStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -511,3 +511,5 @@ export function MCPTools() {
     </Box>
   );
 }
+
+export default MCPTools;

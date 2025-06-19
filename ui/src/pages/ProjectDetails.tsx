@@ -70,6 +70,7 @@ import {
 } from '@mui/lab';
 import { useNavigate, useParams } from 'react-router-dom';
 import { miniMeAPI } from '../services/api';
+import { MarkdownModal } from '../components/MarkdownModal';
 import type { Project, ProjectBrief, ProgressEntry, TaskItem, Memory, ThinkingSequence, TimelineActivity, TimelineFilters } from '../types';
 
 interface TabPanelProps {
@@ -92,7 +93,7 @@ function TabPanel({ children, value, index, ...other }: TabPanelProps) {
   );
 }
 
-export function ProjectDetails() {
+const ProjectDetails = () => {
   const navigate = useNavigate();
   const { projectName } = useParams<{ projectName: string }>();
   
@@ -111,6 +112,19 @@ export function ProjectDetails() {
   const [showBriefDialog, setShowBriefDialog] = useState(false);
   const [showProgressDialog, setShowProgressDialog] = useState(false);
   const [showTaskDialog, setShowTaskDialog] = useState(false);
+  
+  // Modal states for detailed content viewing
+  const [modalContent, setModalContent] = useState<{
+    open: boolean;
+    title: string;
+    content: string;
+    metadata?: any;
+  }>({
+    open: false,
+    title: '',
+    content: '',
+    metadata: undefined
+  });
   
   // Form states
   const [briefForm, setBriefForm] = useState({
@@ -203,6 +217,177 @@ export function ProjectDetails() {
     }
   };
 
+  // Modal helper functions
+  const openContentModal = (title: string, content: string, metadata?: any) => {
+    setModalContent({
+      open: true,
+      title,
+      content,
+      metadata
+    });
+  };
+
+  const closeContentModal = () => {
+    setModalContent({
+      open: false,
+      title: '',
+      content: '',
+      metadata: undefined
+    });
+  };
+
+  const handleThinkingSequenceClick = async (sequence: ThinkingSequence) => {
+    try {
+      // Fetch detailed sequence with all thoughts
+      const response = await miniMeAPI.getThinkingSequence(sequence.id, {
+        format: 'detailed',
+        branches: true
+      });
+      
+      const detailedSequence = response.sequence;
+      
+      // Format the sequence for display
+      const formattedContent = formatThinkingSequenceForModal(detailedSequence);
+      
+      setModalContent({
+        open: true,
+        title: `Thinking Sequence: ${detailedSequence.sequence_name}`,
+        content: formattedContent,
+        metadata: {
+          sequence_id: detailedSequence.id,
+          project_id: detailedSequence.project_id,
+          is_complete: detailedSequence.is_complete,
+          goal: detailedSequence.goal,
+          description: detailedSequence.description,
+          created_at: detailedSequence.created_at,
+          updated_at: detailedSequence.updated_at,
+          thought_count: detailedSequence.thoughts?.length || 0
+        }
+      });
+    } catch (error) {
+      console.error('Error loading thinking sequence:', error);
+      // Fallback to basic sequence info
+      setModalContent({
+        open: true,
+        title: `Thinking Sequence: ${sequence.sequence_name}`,
+        content: `**Goal:** ${sequence.goal || 'Not specified'}\n\n` +
+        `**Description:** ${sequence.description || 'No description provided'}\n\n` +
+        `**Status:** ${sequence.is_complete ? 'Complete' : 'Active'}\n\n` +
+        `**Created:** ${formatDate(sequence.created_at)}\n\n` +
+        `*Error loading detailed thoughts. Please try again.*`,
+        metadata: sequence
+      });
+    }
+  };
+
+  const formatThinkingSequenceForModal = (sequence: ThinkingSequence): string => {
+    let content = '';
+    
+    // Header information
+    content += `# ${sequence.sequence_name}\n\n`;
+    
+    if (sequence.goal) {
+      content += `**🎯 Goal:** ${sequence.goal}\n\n`;
+    }
+    
+    if (sequence.description) {
+      content += `**📝 Description:** ${sequence.description}\n\n`;
+    }
+    
+    content += `**📊 Status:** ${sequence.is_complete ? '✅ Complete' : '🔄 Active'}\n\n`;
+    content += `**📅 Created:** ${formatDate(sequence.created_at)}\n\n`;
+    
+    if (sequence.thoughts && sequence.thoughts.length > 0) {
+      content += `**🧠 Total Thoughts:** ${sequence.thoughts.length}\n\n`;
+      content += `---\n\n`;
+      content += `## 💭 Reasoning Process\n\n`;
+      
+      // Sort thoughts by thought_number
+      const sortedThoughts = [...sequence.thoughts].sort((a, b) => a.thought_number - b.thought_number);
+      
+      sortedThoughts.forEach((thought, index) => {
+        const thoughtTypeEmoji = getThoughtTypeEmoji(thought.thought_type);
+        const confidenceBar = getConfidenceBar(thought.confidence || 0);
+        
+        content += `### ${thoughtTypeEmoji} Thought ${thought.thought_number}\n\n`;
+        
+        if (thought.thought_type) {
+          content += `**Type:** ${thought.thought_type.charAt(0).toUpperCase() + thought.thought_type.slice(1)}\n\n`;
+        }
+        
+        if (thought.confidence !== undefined) {
+          content += `**Confidence:** ${confidenceBar} ${Math.round((thought.confidence || 0) * 100)}%\n\n`;
+        }
+        
+        content += `${thought.content}\n\n`;
+        
+        if (thought.is_revision) {
+          content += `*🔄 This is a revision of an earlier thought*\n\n`;
+        }
+        
+        if (thought.branch_from_thought_id) {
+          content += `*🌿 This thought branches from thought #${thought.branch_from_thought_id}*\n\n`;
+        }
+        
+        content += `---\n\n`;
+      });
+      
+      // Summary section if complete
+      if (sequence.is_complete) {
+        const conclusions = sortedThoughts.filter(t => t.thought_type === 'decision');
+        const decisions = sortedThoughts.filter(t => t.thought_type === 'action');
+        
+        if (conclusions.length > 0 || decisions.length > 0) {
+          content += `## 🎯 Key Outcomes\n\n`;
+          
+          if (conclusions.length > 0) {
+            content += `**Conclusions:**\n`;
+            conclusions.forEach((thought, i) => {
+              content += `${i + 1}. ${thought.content.substring(0, 200)}${thought.content.length > 200 ? '...' : ''}\n`;
+            });
+            content += `\n`;
+          }
+          
+          if (decisions.length > 0) {
+            content += `**Decisions:**\n`;
+            decisions.forEach((thought, i) => {
+              content += `${i + 1}. ${thought.content.substring(0, 200)}${thought.content.length > 200 ? '...' : ''}\n`;
+            });
+            content += `\n`;
+          }
+        }
+      }
+      
+    } else {
+      content += `*No thoughts recorded yet.*\n\n`;
+    }
+    
+    return content;
+  };
+
+  const getThoughtTypeEmoji = (type?: string): string => {
+    const emojiMap: Record<string, string> = {
+      'reasoning': '🤔',
+      'analysis': '🔍',
+      'hypothesis': '💡',
+      'decision': '⚡',
+      'action': '🎯',
+      'reflection': '🪞',
+      'conclusion': '✅',
+      'question': '❓',
+      'observation': '👁️',
+      'assumption': '💭'
+    };
+    return emojiMap[type || 'reasoning'] || '💭';
+  };
+
+  const getConfidenceBar = (confidence: number): string => {
+    const level = Math.round(confidence * 5);
+    const filled = '█'.repeat(level);
+    const empty = '░'.repeat(5 - level);
+    return filled + empty;
+  };
+
   // Timeline helper functions
   const aggregateTimelineActivities = (): TimelineActivity[] => {
     const activities: TimelineActivity[] = [];
@@ -215,7 +400,14 @@ export function ProjectDetails() {
         type: 'memory',
         title: `Memory: ${memory.memory_type}`,
         description: memory.content.substring(0, 150) + (memory.content.length > 150 ? '...' : ''),
-        metadata: { memory_type: memory.memory_type, importance: memory.importance_score },
+        fullContent: memory.content,
+        metadata: { 
+          memory_type: memory.memory_type, 
+          importance: memory.importance_score,
+          created_at: memory.created_at,
+          updated_at: memory.updated_at,
+          tags: memory.tags
+        },
         icon: <MemoryIcon />,
         color: 'primary',
         category: memory.memory_type
@@ -291,10 +483,13 @@ export function ProjectDetails() {
         type: 'brief',
         title: `Project Brief`,
         description: brief.content.substring(0, 150) + (brief.content.length > 150 ? '...' : ''),
+        fullContent: brief.content,
         metadata: { 
           sections: brief.sections,
           auto_tasks_created: brief.auto_tasks_created,
-          technical_analysis_included: brief.technical_analysis_included
+          technical_analysis_included: brief.technical_analysis_included,
+          created_at: brief.created_at,
+          updated_at: brief.updated_at
         },
         icon: <DocumentIcon />,
         color: 'secondary'
@@ -591,6 +786,111 @@ export function ProjectDetails() {
         </Grid>
       </Box>
 
+      {/* Project Brief Section */}
+      {briefs.length > 0 ? (
+        <Box sx={{ mb: 4 }}>
+          <Paper sx={{ p: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Typography variant="h5" fontWeight="bold">
+                Project Brief
+              </Typography>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => setTabValue(0)}
+                endIcon={<DocumentIcon />}
+              >
+                View All Briefs
+              </Button>
+            </Box>
+            
+            {/* Display the most recent brief with markdown preview */}
+            {(() => {
+              const latestBrief = briefs[0]; // Assuming briefs are sorted by date
+              return (
+                <Box>
+                  {/* Brief metadata */}
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+                    {latestBrief.sections?.map((section) => (
+                      <Chip key={section} label={section} size="small" variant="outlined" />
+                    ))}
+                    {latestBrief.auto_tasks_created && (
+                      <Chip label="Tasks Created" size="small" color="success" variant="outlined" />
+                    )}
+                    {latestBrief.technical_analysis_included && (
+                      <Chip label="Technical Analysis" size="small" color="primary" variant="outlined" />
+                    )}
+                  </Box>
+
+                  {/* Brief content preview */}
+                  <Paper 
+                    sx={{ 
+                      p: 3, 
+                      backgroundColor: 'grey.50', 
+                      border: 1, 
+                      borderColor: 'grey.200',
+                      maxHeight: '300px',
+                      overflow: 'auto',
+                      cursor: 'pointer',
+                      '&:hover': {
+                        borderColor: 'primary.main',
+                        backgroundColor: 'primary.50'
+                      }
+                    }}
+                    onClick={() => openContentModal(
+                      'Project Brief',
+                      latestBrief.content,
+                      {
+                        created_at: latestBrief.created_at,
+                        updated_at: latestBrief.updated_at,
+                        sections: latestBrief.sections,
+                        auto_tasks_created: latestBrief.auto_tasks_created,
+                        technical_analysis_included: latestBrief.technical_analysis_included
+                      }
+                    )}
+                  >
+                    <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }}>
+                      {latestBrief.content.substring(0, 500)}{latestBrief.content.length > 500 ? '...' : ''}
+                    </Typography>
+                    <Box sx={{ mt: 2, textAlign: 'center' }}>
+                      <Typography variant="caption" color="primary.main" sx={{ fontWeight: 500 }}>
+                        Click to view full project brief
+                      </Typography>
+                    </Box>
+                  </Paper>
+                </Box>
+              );
+            })()}
+            
+            <Box sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
+              <Typography variant="caption" color="text.secondary">
+                Last updated: {briefs[0] ? new Date(briefs[0].created_at).toLocaleDateString() : 'N/A'}
+              </Typography>
+            </Box>
+          </Paper>
+        </Box>
+      ) : (
+        <Box sx={{ mb: 4 }}>
+          <Paper sx={{ p: 3, textAlign: 'center' }}>
+            <DocumentIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
+            <Typography variant="h5" fontWeight="bold" gutterBottom>
+              No Project Brief Yet
+            </Typography>
+            <Typography color="text.secondary" sx={{ mb: 3 }}>
+              Create comprehensive project documentation with AI assistance to get started.
+            </Typography>
+            <Button
+              variant="contained"
+              startIcon={<CreateIcon />}
+              onClick={() => setShowBriefDialog(true)}
+              size="large"
+            >
+              Create Project Brief
+            </Button>
+          </Paper>
+        </Box>
+      )}
+
       {/* Tabs */}
       <Box sx={{ width: '100%' }}>
         <Paper sx={{ mb: 0 }}>
@@ -645,7 +945,30 @@ export function ProjectDetails() {
           ) : (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {briefs.map((brief) => (
-                <Paper key={brief.id} sx={{ p: 3, border: 1, borderColor: 'divider' }}>
+                <Paper 
+                  key={brief.id} 
+                  sx={{ 
+                    p: 3, 
+                    border: 1, 
+                    borderColor: 'divider',
+                    cursor: 'pointer',
+                    '&:hover': {
+                      borderColor: 'primary.main',
+                      backgroundColor: 'primary.50'
+                    }
+                  }}
+                  onClick={() => openContentModal(
+                    `Project Brief #${brief.id}`,
+                    brief.content,
+                    {
+                      created_at: brief.created_at,
+                      updated_at: brief.updated_at,
+                      sections: brief.sections,
+                      auto_tasks_created: brief.auto_tasks_created,
+                      technical_analysis_included: brief.technical_analysis_included
+                    }
+                  )}
+                >
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
                     <Typography variant="h6" fontWeight="bold">
                       Project Brief #{brief.id}
@@ -662,10 +985,10 @@ export function ProjectDetails() {
                   </Box>
                   
                   <Typography variant="body2" sx={{ mb: 2, whiteSpace: 'pre-wrap' }}>
-                    {brief.content.substring(0, 300)}...
+                    {brief.content.substring(0, 300)}{brief.content.length > 300 ? '...' : ''}
                   </Typography>
                   
-                  <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
                     <Chip
                       label={brief.auto_tasks_created ? 'Tasks Created' : 'No Tasks'}
                       size="small"
@@ -677,6 +1000,10 @@ export function ProjectDetails() {
                       color={brief.technical_analysis_included ? 'primary' : 'default'}
                     />
                   </Box>
+                  
+                  <Typography variant="caption" color="primary.main" sx={{ fontWeight: 500, textAlign: 'center', display: 'block' }}>
+                    Click to view full brief
+                  </Typography>
                 </Paper>
               ))}
             </Box>
@@ -811,17 +1138,72 @@ export function ProjectDetails() {
           <Grid container spacing={2}>
             {tasks.map((task) => (
               <Grid item xs={12} md={6} key={task.id}>
-                <Paper sx={{ p: 3, border: 1, borderColor: 'divider', height: '100%' }}>
+                <Paper 
+                  sx={{ 
+                    p: 3, 
+                    border: 1, 
+                    borderColor: 'divider', 
+                    height: '100%',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      borderColor: 'primary.main',
+                      backgroundColor: 'primary.50',
+                      transform: 'translateY(-2px)',
+                      boxShadow: 2
+                    }
+                  }}
+                  onClick={() => openContentModal(
+                    `${task.category.toUpperCase()} Task: ${task.title}`,
+                    `**Title:** ${task.title}\n\n**Description:** ${task.description}\n\n**Category:** ${task.category}\n\n**Status:** ${task.status}\n\n**Priority:** ${task.priority?.urgency || 'medium'} urgency, ${task.priority?.impact || 'medium'} impact\n\n${task.estimated_hours ? `**Estimated Hours:** ${task.estimated_hours}h\n\n` : ''}${task.tags && task.tags.length > 0 ? `**Tags:** ${task.tags.join(', ')}\n\n` : ''}**Created:** ${formatDate(task.created_at)}${task.updated_at && task.updated_at !== task.created_at ? `\n**Updated:** ${formatDate(task.updated_at)}` : ''}`,
+                    {
+                      task_id: task.id,
+                      category: task.category,
+                      status: task.status,
+                      priority: task.priority,
+                      estimated_hours: task.estimated_hours,
+                      tags: task.tags,
+                      created_at: task.created_at,
+                      updated_at: task.updated_at
+                    }
+                  )}
+                >
                   <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
                       {getStatusIcon(task.status)}
                       {getCategoryIcon(task.category)}
                     </Box>
-                    <Box sx={{ flexGrow: 1 }}>
-                      <Typography variant="h6" fontWeight="bold" gutterBottom>
+                    <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                      <Typography 
+                        variant="h6" 
+                        fontWeight="bold" 
+                        gutterBottom
+                        sx={{
+                          wordBreak: 'break-word',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                          lineHeight: 1.2,
+                          maxHeight: '2.4em'
+                        }}
+                      >
                         {task.title}
                       </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                      <Typography 
+                        variant="body2" 
+                        color="text.secondary" 
+                        sx={{ 
+                          mb: 1,
+                          wordBreak: 'break-word',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 3,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                          lineHeight: 1.4,
+                          maxHeight: '4.2em'
+                        }}
+                      >
                         {task.description}
                       </Typography>
                       <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
@@ -847,6 +1229,9 @@ export function ProjectDetails() {
                       )}
                     </Box>
                   </Box>
+                  <Typography variant="caption" color="primary.main" sx={{ fontWeight: 500, textAlign: 'center', display: 'block', mt: 1 }}>
+                    Click to view full task details
+                  </Typography>
                 </Paper>
               </Grid>
             ))}
@@ -881,17 +1266,41 @@ export function ProjectDetails() {
           <Grid container spacing={2}>
             {memories.map((memory) => (
               <Grid item xs={12} md={6} key={memory.id}>
-                <Paper sx={{ p: 3, border: 1, borderColor: 'divider', height: '100%' }}>
+                <Paper 
+                  sx={{ 
+                    p: 3, 
+                    border: 1, 
+                    borderColor: 'divider', 
+                    height: '100%',
+                    cursor: 'pointer',
+                    '&:hover': {
+                      borderColor: 'primary.main',
+                      backgroundColor: 'primary.50'
+                    }
+                  }}
+                  onClick={() => openContentModal(
+                    `${memory.memory_type.toUpperCase()} Memory`,
+                    memory.content,
+                    {
+                      created_at: memory.created_at,
+                      updated_at: memory.updated_at,
+                      memory_type: memory.memory_type,
+                      importance_score: memory.importance_score,
+                      tags: memory.tags,
+
+                    }
+                  )}
+                >
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                     <Chip label={memory.memory_type} size="small" color="primary" />
                     <Typography variant="caption" color="text.secondary">
                       {formatDate(memory.created_at)}
                     </Typography>
                   </Box>
-                  <Typography variant="body2" sx={{ mt: 1 }}>
-                    {memory.content.substring(0, 200)}...
+                  <Typography variant="body2" sx={{ mt: 1, mb: 2 }}>
+                    {memory.content.substring(0, 200)}{memory.content.length > 200 ? '...' : ''}
                   </Typography>
-                  <Box sx={{ mt: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Box sx={{ mt: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                     <LinearProgress
                       variant="determinate"
                       value={memory.importance_score * 100}
@@ -901,6 +1310,9 @@ export function ProjectDetails() {
                       {Math.round(memory.importance_score * 100)}% importance
                     </Typography>
                   </Box>
+                  <Typography variant="caption" color="primary.main" sx={{ fontWeight: 500, textAlign: 'center', display: 'block' }}>
+                    Click to view full memory
+                  </Typography>
                 </Paper>
               </Grid>
             ))}
@@ -916,7 +1328,23 @@ export function ProjectDetails() {
           <Grid container spacing={2}>
             {thinking.map((sequence) => (
               <Grid item xs={12} md={6} key={sequence.id}>
-                <Paper sx={{ p: 3, border: 1, borderColor: 'divider', height: '100%' }}>
+                <Paper 
+                  sx={{ 
+                    p: 3, 
+                    border: 1, 
+                    borderColor: 'divider', 
+                    height: '100%',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      borderColor: 'primary.main',
+                      backgroundColor: 'primary.50',
+                      transform: 'translateY(-2px)',
+                      boxShadow: 2
+                    }
+                  }}
+                  onClick={() => handleThinkingSequenceClick(sequence)}
+                >
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                     <Typography variant="h6" fontWeight="bold">
                       {sequence.sequence_name}
@@ -932,6 +1360,11 @@ export function ProjectDetails() {
                       {sequence.description}
                     </Typography>
                   )}
+                  {sequence.goal && (
+                    <Typography variant="body2" color="text.primary" sx={{ mb: 1, fontStyle: 'italic' }}>
+                      Goal: {sequence.goal}
+                    </Typography>
+                  )}
                   <Typography variant="caption" color="text.secondary">
                     Created {formatDate(sequence.created_at)}
                   </Typography>
@@ -940,10 +1373,24 @@ export function ProjectDetails() {
                       • {sequence.thoughts.length} thoughts
                     </Typography>
                   )}
+                  <Typography variant="caption" color="primary.main" sx={{ fontWeight: 500, textAlign: 'center', display: 'block', mt: 2 }}>
+                    Click to view complete reasoning process
+                  </Typography>
                 </Paper>
               </Grid>
             ))}
           </Grid>
+
+          {thinking.length === 0 && (
+            <Paper sx={{ p: 4, textAlign: 'center' }}>
+              <Typography variant="h6" gutterBottom>
+                No thinking sequences yet
+              </Typography>
+              <Typography color="text.secondary" sx={{ mb: 2 }}>
+                Create structured reasoning processes to track complex decisions and analysis
+              </Typography>
+            </Paper>
+          )}
         </TabPanel>
 
         {/* Timeline Tab */}
@@ -1049,7 +1496,27 @@ export function ProjectDetails() {
                   </TimelineSeparator>
                   
                   <TimelineContent sx={{ py: '12px', px: 2 }}>
-                    <Paper sx={{ p: 2, border: 1, borderColor: 'divider' }}>
+                    <Paper 
+                      sx={{ 
+                        p: 2, 
+                        border: 1, 
+                        borderColor: 'divider',
+                        cursor: activity.fullContent ? 'pointer' : 'default',
+                        '&:hover': activity.fullContent ? {
+                          borderColor: 'primary.main',
+                          backgroundColor: 'primary.50'
+                        } : {}
+                      }}
+                      onClick={() => {
+                        if (activity.fullContent) {
+                          openContentModal(
+                            activity.title,
+                            activity.fullContent,
+                            activity.metadata
+                          );
+                        }
+                      }}
+                    >
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                         <Typography variant="h6" component="span" fontWeight="bold">
                           {activity.title}
@@ -1113,34 +1580,41 @@ export function ProjectDetails() {
                       
                       {activity.type === 'progress' && (activity.metadata?.blockers?.length > 0 || activity.metadata?.next_steps?.length > 0) && (
                         <Box sx={{ mt: 1 }}>
-                          {activity.metadata.blockers?.length > 0 && (
+                          {activity.metadata?.blockers?.length > 0 && (
                             <Box sx={{ mb: 1 }}>
                               <Typography variant="caption" color="error.main" fontWeight="bold">
                                 Blockers:
                               </Typography>
                               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
-                                {activity.metadata.blockers.map((blocker: string, idx: number) => (
+                                {activity.metadata?.blockers?.map((blocker: string, idx: number) => (
                                   <Chip key={idx} label={blocker} size="small" color="error" variant="outlined" />
                                 ))}
                               </Box>
                             </Box>
                           )}
-                          {activity.metadata.next_steps?.length > 0 && (
+                          {activity.metadata?.next_steps?.length > 0 && (
                             <Box>
                               <Typography variant="caption" color="primary.main" fontWeight="bold">
                                 Next Steps:
                               </Typography>
                               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
-                                {activity.metadata.next_steps.slice(0, 3).map((step: string, idx: number) => (
+                                {activity.metadata?.next_steps?.slice(0, 3).map((step: string, idx: number) => (
                                   <Chip key={idx} label={step} size="small" color="primary" variant="outlined" />
                                 ))}
-                                {activity.metadata.next_steps.length > 3 && (
-                                  <Chip label={`+${activity.metadata.next_steps.length - 3} more`} size="small" variant="outlined" />
+                                {(activity.metadata?.next_steps?.length || 0) > 3 && (
+                                  <Chip label={`+${(activity.metadata?.next_steps?.length || 0) - 3} more`} size="small" variant="outlined" />
                                 )}
                               </Box>
                             </Box>
                           )}
                         </Box>
+                      )}
+                      
+                      {/* Click indicator for items with full content */}
+                      {activity.fullContent && (
+                        <Typography variant="caption" color="primary.main" sx={{ fontWeight: 500, textAlign: 'center', display: 'block', mt: 1 }}>
+                          Click to view full content
+                        </Typography>
                       )}
                     </Paper>
                   </TimelineContent>
@@ -1322,6 +1796,17 @@ export function ProjectDetails() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Markdown Modal for detailed content viewing */}
+      <MarkdownModal
+        open={modalContent.open}
+        onClose={closeContentModal}
+        title={modalContent.title}
+        content={modalContent.content}
+        metadata={modalContent.metadata}
+      />
     </Box>
   );
 }
+
+export default ProjectDetails;
